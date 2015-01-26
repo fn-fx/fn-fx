@@ -37,11 +37,11 @@
 (deftest test-nested-changes
   (testing "nested children are diffed"
     (let [changes (diff {:id :my-id
-                         :children #{:a}
+                         :fn-fx/children #{:a}
                          :a {:id :child-id
                              :a 1}}
                         {:id :my-id
-                         :children #{:a}
+                         :fn-fx/children #{:a}
                          :a {:id :child-id
                              :a 2}})]
       (is (= changes #{(->Child :a #{(->SetProperty :a 2)})})))))
@@ -54,12 +54,22 @@
 
   (testing "changing a child type"
     (let [changes (diff {:type :a
-                         :children #{:a}
+                         :fn-fx/children #{:a}
                          :a {:type :foo}}
                         {:type :a
-                         :children #{:a}
+                         :fn-fx/children #{:a}
                          :a {:type :bar}})]
       (is (= changes #{(->Child :a #{(->Create {:type :bar})})})))))
+
+(deftest list-nodes
+  (testing "can compare lists"
+    (let [changes (diff {:type :a
+                         :fn-fx/children #{:a}
+                         :a []}
+                        {:type :a
+                         :fn-fx/children #{:a}
+                         :a [{:type :foo}]})]
+      (is (= changes #{(->ListChild :a [[0 (->Create {:type :foo})]])})))))
 
 
 

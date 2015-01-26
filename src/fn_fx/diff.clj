@@ -4,7 +4,11 @@
 (defrecord SetProperty [property-name value])
 (defrecord UnSetProperty [property-name])
 (defrecord Child [property-name updates])
+(defrecord ListChild [property-name updates])
 (defrecord Create [template])
+(defrecord ListDelete [])
+
+(def list-delete (->ListDelete))
 
 (declare diff)
 
@@ -14,7 +18,7 @@
                   (fn [changes k v]
                     (if-let [bv (get b k)]
                       (if (or (= bv v)
-                              (contains? (:children a) k))
+                              (contains? (:fn-fx/children a) k))
                         changes
                         (rfn changes (->SetProperty k bv)))
                       (rfn changes (->UnSetProperty k))))
@@ -30,15 +34,29 @@
                   b)]
     changes))
 
+(defn diff-list [a b]
+  (reduce
+    (fn [changes idx]
+      (let [aitem (nth a idx ::not-found)
+            bitem (nth b idx ::not-found)]
+        (cond
+          (= aitem ::not-found) (conj changes [idx (->Create bitem)])
+          (= bitem ::not-found) (conj changes [idx list-delete])
+          :else (conj changes [idx (diff aitem bitem)]))))
+    []
+    (range (max (count a) (count b)))))
+
 (defn diff-children [a b rfn changes]
   (let [changes (reduce
                   (fn [changes child]
-                    (let [d (diff (get a child) (get b child))]
-                      (if (empty? d)
-                        changes
-                        (rfn changes (->Child child d)))))
+                    (if (sequential? (get a child))
+                        (rfn changes (->ListChild child (diff-list (get a child) (get b child))))
+                      (let [d (diff (get a child) (get b child))]
+                        (if (empty? d)
+                          changes
+                          (rfn changes (->Child child d))))))
                   changes
-                  (:children a))]
+                  (:fn-fx/children a))]
     changes))
 
 (defn diff [a b]
