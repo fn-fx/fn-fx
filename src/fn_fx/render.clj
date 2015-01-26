@@ -1,16 +1,15 @@
 (ns fn-fx.render
-  (:require [fn-fx.util :as util]
-            [fn-fx.diff :as diff])
-  (:import (javax.swing JFrame)
+  (:import (javafx.embed.swing JFXPanel)
+           (javax.swing JFrame)
            (javafx.application Application)
            (javafx.scene.layout StackPaneBuilder VBox VBoxBuilder)
            (javafx.stage Stage StageBuilder)
            (javafx.scene Scene SceneBuilder Parent)
            (javafx.scene.control Button ButtonBuilder)
-           (javafx.embed.swing JFXPanel)
            (java.lang.reflect Method)
-           (javafx.collections ObservableList)
-           (fn_fx.diff Create Child ListChild)))
+           (javafx.collections ObservableList))
+  (:require [fn-fx.util :as util]
+            [fn-fx.diff :as diff]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,13 +18,13 @@
 (def constructors {:Stage StageBuilder
                    :Scene SceneBuilder
                    :Button ButtonBuilder
-                   :StackPane StackPaneBuilder
+                   ;      :StackPane StackPaneBuilder
                    :VBox VBoxBuilder})
 
 (def types {:Stage Stage
             :Scene Scene
             :Button Button
-            :StackPane StackPane
+            ; :StackPane StackPane
             :VBox VBox})
 
 (declare create-component)
@@ -86,6 +85,7 @@
 (def get-setter
   (memoize
     (fn [tp]
+      (assert tp)
       (let [^Class tp tp
             obj-sym (with-meta (gensym "obj")
                                    {:tag (symbol (.getName tp))})
@@ -103,6 +103,7 @@
                            ~(symbol (.getName ^Method m))
                            ~(with-meta `(~converter ~val-sym)
                                        {:tag arg-type}))])
+
             form `(fn [~obj-sym property# ~val-sym]
                     (println "Setting " property#)
                     (case property#
@@ -179,21 +180,27 @@
 (declare run-updates)
 
 (extend-protocol IRunUpdate
-  (type (diff/->SetProperty nil nil))
+  fn_fx.diff.SetProperty
   (-run-update [{:keys [property-name value]} control]
     (let [f (get-setter (type control))]
       (assert f)
       (f control property-name value)
       control))
-)
+  (-run-indexed-update [command lst idx control]
+    (-run-update command control)))
 
 (extend-protocol IRunUpdate
-
-  (type (diff/->Child nil nil))
+  fn_fx.diff.Child
   (-run-update [{:keys [property-name updates]} control]
     (let [f (get-getter (type control))
           child (f control property-name)]
       (run-updates child updates))))
+
+(extend-protocol IRunUpdate
+  fn_fx.diff.ListDelete
+  (-run-indexed-update [_ lst idx control]
+    (println (count lst) idx "<---- list delete")
+    (println (.remove ^java.util.List lst (int idx)))))
 
 (extend-type fn_fx.diff.Create
   IRunUpdate
@@ -203,15 +210,20 @@
 
 
 (extend-protocol IRunUpdate
-
-  (type (diff/->ListChild nil nil))
+  fn_fx.diff.ListChild
   (-run-update [{:keys [property-name updates]} control]
     (let [f (get-getter (type control))
           ^java.util.List child-list (f control property-name)]
       (reduce
         (fn [_ [idx commands]]
           (if (set? commands)
-            (assert false)
+            (reduce
+              (fn [_ command]
+                (if (<= (count child-list) idx)
+                  (-run-indexed-update command child-list idx nil)
+                  (-run-indexed-update command child-list idx (.get child-list (int idx)))))
+              nil
+              commands)
             (if (<= (count child-list) idx)
               (-run-indexed-update commands child-list idx nil)
               (-run-indexed-update commands child-list idx (.get child-list (int idx))))))
@@ -227,29 +239,21 @@
     root
     commands))
 
-(util/run-and-wait (assert false)
-                   )
-
-#_(util/run-and-wait
-  (type (create-component {:type :Scene
-                           :root {:type :Button
-                                  :text "Hello World"}})))
-
 (let [data {:type      :Stage
             :fn-fx/children #{:scene}
             :scene     {:type :Scene
                         :fn-fx/children #{:root}
                         :root {:type     :VBox
                                :fn-fx/children #{:children}
-                               :children [
+                               :children [{:type :Button
+                                           :text "Hello World"}
                                           ]}}
             :title     "Hello World"
             :minWidth  200
             :minHeight 200}
-      data2 (update-in data [:scene :root :children] conj {:type :Button
-                                                           :text "Hello World"})
-      data2 (update-in data2 [:scene :root :children] conj {:type :Button
-                                                           :text "Hello World"})
+      ;   data2 (assoc-in data [:scene :root :children 0 :text] "Sup")
+      data2 (update-in data [:scene :root :children] pop)
+
       _ (clojure.pprint/pprint data2)
 
 
