@@ -1,6 +1,6 @@
 # fn(fx)
 This library provides a functional, declarative wrapper around JavaFX. The goals are to provide a "Virtual DOM" like
-interface over the common OOP mutability JavaFX embrances. 
+interface over the OOP mutability JavaFX embrances. 
 
 # Rationale
 While the web has taken over many aspects of GUI programming that normally would have been implemented in JavaFX, its
