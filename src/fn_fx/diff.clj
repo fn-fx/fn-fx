@@ -42,7 +42,10 @@
         (cond
           (= aitem ::not-found) (conj changes [idx (->Create bitem)])
           (= bitem ::not-found) (conj changes [idx list-delete])
-          :else (conj changes [idx (diff aitem bitem)]))))
+          :else (let [child-changes (diff aitem bitem)]
+                  (if child-changes
+                    (conj changes [idx child-changes])
+                    changes)))))
     []
     (range (max (count a) (count b)))))
 

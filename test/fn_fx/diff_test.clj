@@ -69,7 +69,19 @@
                         {:type :a
                          :fn-fx/children #{:a}
                          :a [{:type :foo}]})]
-      (is (= changes #{(->ListChild :a [[0 (->Create {:type :foo})]])})))))
+      (is (= changes #{(->ListChild :a [[0 (->Create {:type :foo})]])}))))
+  (testing "can update lists"
+    (let [changes (diff {:type :a
+                         :fn-fx/children #{:a}
+                         :a [{:type :b
+                              :prop {:type :foo
+                                     :tag 42}}]}
+                        {:type :a
+                         :fn-fx/children #{:a}
+                         :a [{:type :b
+                              :prop {:type :foo
+                                     :tag 43}}]})]
+      (is (= changes 0)))))
 
 
 
