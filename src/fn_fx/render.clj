@@ -2,10 +2,12 @@
   (:import (javafx.embed.swing JFXPanel)
            (javax.swing JFrame)
            (javafx.application Application)
+           (javafx.scene Scene Node)
            (javafx.stage Stage)
            (java.lang.reflect Method Modifier)
            (javafx.collections ObservableList)
-           (javafx.event EventHandler))
+           (javafx.event EventHandler)
+           (javafx.collections FXCollections))
   (:require [fn-fx.util :as util]
             [fn-fx.diff :as diff]))
 
@@ -52,6 +54,9 @@
   javafx.scene.Parent
   javafx.scene.control.Button
   javafx.scene.control.Label
+  javafx.scene.control.ListView
+  javafx.scene.control.TextField
+  javafx.scene.control.PasswordField
   javafx.scene.layout.VBox
   javafx.scene.layout.HBox
   javafx.scene.layout.StackPane
@@ -111,6 +116,9 @@
                                    {:tag (symbol (.getName ctor))})
             val-sym (gensym "val")
             clauses (for [m (.getMethods ctor)
+                          :when (Modifier/isPublic (.getModifiers ^Method m))
+                          :when (not (Modifier/isStatic (.getModifiers ^Method m)))
+                          :when (not (Modifier/isVolatile (.getModifiers ^Method m)))
                           :when (= (.getParameterCount ^Method m) 1)
                           :when (not (#{"applyTo"} (.getName ^Method m)))
                           :let [arg-type (aget (.getParameterTypes ^Method m) 0)]
@@ -221,17 +229,25 @@
 
 (def ^:dynamic *handler-atom*)
 
-(defn create-event-handler [{:keys [tag include]}]
+(defn create-event-handler [{:keys [include] :as template}]
   (let [handler-atom *handler-atom*]
     (reify EventHandler
       (handle [this event]
         (let [getter (get-getter (class event))
+              target (getter event :target)
+              target-getter (get-getter (class target))
+              ^Scene scene (target-getter target :scene)
               msg (reduce
                     (fn [acc include]
-                      (assoc acc include (getter event include)))
-                    {:tag tag}
+                      (if (vector? include)
+                        (let [[id property] include
+                              nd (.lookup scene id)
+                              getter (get-getter (class nd))]
+                          (assoc acc include (getter nd property)))
+                        (assoc acc include (getter event include))))
+                    template
                     include)]
-          (@handler-atom msg))))))
+          (future (@handler-atom msg)))))))
 
 
 (def get-builder-build-fn
@@ -247,7 +263,7 @@
 
 
 (defn convert-observable-list [itms]
-  (mapv create-component itms))
+  (FXCollections/observableArrayList ^java.util.Collection (mapv create-component itms)))
 
 (def ignore-properties #{:type :fn-fx/children})
 
@@ -333,7 +349,9 @@
               (-run-indexed-update commands child-list idx nil)
               (-run-indexed-update commands child-list idx (.get child-list (int idx))))))
         nil
-        updates))))
+        updates)))
+  (-run-indexed-update [this lst idx control]
+    (-run-update this control)))
 
 (defn run-updates [root commands]
   (reduce
@@ -342,17 +360,6 @@
       (-run-update command root))
     root
     commands))
-
-(defn add-rerender-watcher [a control]
-  (add-watch a
-             ::re-renderer
-             (fn [k r o n]
-               (println "diffing")
-               (let [changes (time (diff/diff o n))]
-                 (util/run-later
-                   (println "updating")
-                   (time (run-updates control changes)))))))
-
 
 (defprotocol IRoot
   (update! [this new-state])
@@ -367,11 +374,11 @@
     (diff/diff @state new-state))
   (update! [this new-state]
     (locking this
-      (let [changes (diff this new-state)]
+      (let [changes (time (diff this new-state))]
         (vreset! state new-state)
         (util/run-later
           (binding [*handler-atom* handler-atom]
-            (run-updates root changes)))))
+            (time (run-updates root changes))))))
     this)
   (update-handler! [this new-handler]
     (reset! handler-atom new-handler))
@@ -386,76 +393,3 @@
               (create-component state)))]
     (Root. (volatile! state) handler r)))
 
-#_(let [state (atom {:type :Stage
-                   :fn-fx/children #{:scene}
-                   :title "Counter"
-;                   :minWidth 100
-;                   :minHeight 100
-                   :scene {:type :Scene
-                           :fn-fx/children #{:root}
-                           :root {:type :VBox
-                                  :fn-fx/children #{:children}
-                                  :children [{:type :Label
-                                              :text 0}
-                                             {:type :HBox
-                                              :fn-fx/children #{:children}
-                                              :children [{:type :Button
-                                                          :onAction {:tag :+}
-                                                          :text "+"}
-                                                         {:type :Button
-                                                          :onAction {:tag :-}
-                                                          :text "-"}]}]}}})
-      r (util/run-and-wait
-          (create-component @state))
-      _ (add-rerender-watcher state r)
-      _ (util/run-and-wait
-          (.show r))]
-  (async/go
-    (loop []
-      (when-some [val (async/<! event-chan)]
-        (cond
-          (= (:tag val) :+) (swap! state update-in [:scene :root :children 0 :text] inc)
-          (= (:tag val) :-) (swap! state update-in [:scene :root :children 0 :text] dec))
-        (recur)))))
-
-#_(let [data {:type      :Stage
-            :fn-fx/children #{:scene}
-            :scene     {:type :Scene
-                        :fn-fx/children #{:root}
-                        :root {:type     :VBox
-                               :fn-fx/children #{:children}
-                               :children [{:type :Button
-                                           :onAction {:tag 42
-                                                      :include #{:eventType}}
-                                           :text "Hello World"}
-                                          ]}}
-
-            :title     "Hello World"
-            :minWidth  200
-            :minHeight 200}
-      ;   data2 (assoc-in data [:scene :root :children 0 :text] "Sup")
-      data2 (update-in data [:scene :root :children 0 :onAction :tag] inc)
-
-      _ (clojure.pprint/pprint data2)
-
-
-      r (util/run-and-wait
-          (create-component data))
-      _ (util/run-and-wait
-          (.show r))
-
-      commands (diff/diff data data2)]
-  (println "diff commands.... <-     -------")
-  (clojure.pprint/pprint commands )
-  (util/run-and-wait
-    (run-updates r commands))
-  )
-
-
-(comment
-  (util/run-and-wait (println "starting"))
-
-
-
-
-  (new javafx.scene.SceneBuilder))

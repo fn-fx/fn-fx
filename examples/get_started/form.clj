@@ -28,10 +28,39 @@
                                                  :GridPane/columnIndex 0
                                                  :GridPane/rowIndex 0
                                                  :GridPane/columnSpan 2
-                                                 :GridPane/rowSpan 1
-                                                 }]}}})
+                                                 :GridPane/rowSpan 1}
+                                                {:type :Label
+                                                 :text "User Name:"
+                                                 :GridPane/columnIndex 0
+                                                 :GridPane/rowIndex 1}
+                                                {:type :TextField
+                                                 :id "user-name"
+                                                 :GridPane/columnIndex 1
+                                                 :GridPane/rowIndex 1}
+                                                {:type :Label
+                                                 :text "Password:"
+                                                 :GridPane/columnIndex 0
+                                                 :GridPane/rowIndex 2}
+                                                {:type :PasswordField
+                                                 :id "password"
+                                                 :GridPane/columnIndex 1
+                                                 :GridPane/rowIndex 2}
+
+                                                {:type :HBox
+                                                 :alignment :bottom_right
+                                                 :fn-fx/children #{:children}
+                                                 :children [{:type :Button
+                                                             :id :foo
+                                                             :onAction {:include #{["#user-name" :text]
+                                                                                   ["#password" :text]}
+                                                                        :action :login}
+                                                             :text "Sign in"}]
+                                                 :GridPane/columnIndex 1
+                                                 :GridPane/rowIndex 4}]}}})
 
 (let [c (render/create-root init-state)]
   (render/update-handler! c (fn [evt]
                               (println "Hello world! : " evt)))
   (render/show! c))
+
+
