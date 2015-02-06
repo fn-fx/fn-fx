@@ -6,4 +6,5 @@
   :dependencies [[org.clojure/clojure "1.7.0-alpha5"]
                  [org.clojure/core.memoize "0.5.6"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]]
-  :profiles {:dev {:source-paths ["src" "examples"]}})
+  :profiles {:dev {:source-paths ["src" "examples"]
+                   :dependencies [[org.clojure/core.match "0.3.0-alpha4"]]}})

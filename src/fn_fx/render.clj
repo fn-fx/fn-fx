@@ -7,7 +7,8 @@
            (java.lang.reflect Method Modifier)
            (javafx.collections ObservableList)
            (javafx.event EventHandler)
-           (javafx.collections FXCollections))
+           (javafx.collections FXCollections)
+           (java.util WeakHashMap))
   (:require [fn-fx.util :as util]
             [fn-fx.diff :as diff]))
 
@@ -18,7 +19,11 @@
 (def constructors (atom {}))
 (def types (atom {}))
 
+(def ^:dynamic *log* false)
 
+(defn log [form]
+  (when *log*
+    (log form)))
 
 
 
@@ -57,6 +62,7 @@
   javafx.scene.control.ListView
   javafx.scene.control.TextField
   javafx.scene.control.PasswordField
+  javafx.scene.control.MultipleSelectionModel
   javafx.scene.layout.VBox
   javafx.scene.layout.HBox
   javafx.scene.layout.StackPane
@@ -68,7 +74,6 @@
 
 (def get-enum-converter
   (memoize (fn [^Class to-tp]
-             (println "ENUM---->> for " to-tp)
              (let [clauses (mapcat
                              (fn [o]
                                `[~(keyword (.toLowerCase ^String (str o)))
@@ -79,7 +84,7 @@
                            (case v#
                              ~@clauses
                              :else (assert false (str "Bad enum value " v#))))]
-               (println form)
+               (log form)
                (eval form)))))
 
 
@@ -101,11 +106,11 @@
       (let [ctor (@constructors nm)
             _ (assert ctor (str "No constructor for " nm))
             form `(fn [] (. ~(@constructors nm) create))]
-        (println form)
+        (log form)
         (eval form)))))
 
 
-(def ^:dynamic *parent-props* nil)
+(def ^:dynamic *id-map*)
 
 
 (def get-builder-setter
@@ -134,8 +139,7 @@
                       ~@(apply concat clauses)
                       (println "Unknown property" property# "on" ~tp)
                       #_(assert false (str "Unknown property" {:property-name property#}))))]
-        (binding [*print-meta* true]
-          (println form))
+        (log form)
         (eval form)))))
 
 (def get-setter
@@ -164,8 +168,8 @@
                     (case property#
                       ~@(apply concat clauses)
                       (println "Unknown property" property# " on " ~tp)))]
-        (binding [*print-meta* true]
-          (println form))
+
+        (log form)
         (eval form)))))
 
 (def get-static-setter
@@ -197,11 +201,9 @@
                     (case (name property#)
                       ~@(apply concat clauses)
                       (println "Unknown static property" property# "on" ~tp)))]
-        (binding [*print-meta* true]
-          (println form))
-        (eval form)))))
 
-(get-static-setter javafx.scene.layout.GridPane)
+        (log form)
+        (eval form)))))
 
 (def get-getter
   (memoize
@@ -222,15 +224,15 @@
                     (case property#
                       ~@(apply concat clauses)
                       (println "Unknown property" property#)))]
-        (binding [*print-meta* true]
-          (println form))
+        (log form)
         (eval form)))))
 
 
 (def ^:dynamic *handler-atom*)
 
-(defn create-event-handler [{:keys [include] :as template}]
-  (let [handler-atom *handler-atom*]
+(defn create-event-handler [{:keys [include event-properties] :as template}]
+  (let [handler-atom *handler-atom*
+        id-map *id-map*]
     (reify EventHandler
       (handle [this event]
         (let [getter (get-getter (class event))
@@ -240,13 +242,21 @@
               msg (reduce
                     (fn [acc include]
                       (if (vector? include)
-                        (let [[id property] include
-                              nd (.lookup scene id)
-                              getter (get-getter (class nd))]
-                          (assoc acc include (getter nd property)))
+                        (let [[id & properties] include
+                              value (reduce
+                                      (fn [nd k]
+                                        ((get-getter (class nd)) nd k))
+                                      (.get ^WeakHashMap id-map id)
+                                      properties)]
+                          (assoc acc include value))
                         (assoc acc include (getter event include))))
                     template
-                    include)]
+                    include)
+              msg (reduce
+                    (fn [acc prop]
+                      (assoc acc prop (getter event prop)))
+                    msg
+                    event-properties)]
           (future (@handler-atom msg)))))))
 
 
@@ -258,14 +268,14 @@
                                    {:tag (symbol (.getName ctor))})
             form `(fn [~builder-sym]
                     (.build ~builder-sym))]
-        (println form)
+        (log form)
         (eval form)))))
 
 
 (defn convert-observable-list [itms]
   (FXCollections/observableArrayList ^java.util.Collection (mapv create-component itms)))
 
-(def ignore-properties #{:type :fn-fx/children})
+(def ignore-properties #{:type :fn-fx/children :fn-fx/id})
 
 (defn create-component [component]
   (let [tp (:type component)
@@ -290,6 +300,8 @@
               ((get-static-setter tp) built (name k) v))))
         nil
         component)
+      (when-let [id (:fn-fx/id component)]
+        (.put ^WeakHashMap *id-map* id built))
       built)))
 
 
@@ -304,10 +316,13 @@
 (extend-protocol IRunUpdate
   fn_fx.diff.SetProperty
   (-run-update [{:keys [property-name value]} control]
-    (let [f (get-setter (type control))]
-      (assert f)
-      (f control property-name value)
-      control))
+    (if (identical? property-name :fn-fx/id)
+      (do (.put ^WeakHashMap *id-map* value control)
+          control)
+      (let [f (get-setter (type control))]
+        (assert f)
+        (f control property-name value)
+        control)))
   (-run-indexed-update [command lst idx control]
     (-run-update command control)))
 
@@ -368,7 +383,7 @@
   (show! [this]))
 
 
-(deftype Root [state handler-atom root]
+(deftype Root [state handler-atom root ids]
   IRoot
   (diff [this new-state]
     (diff/diff @state new-state))
@@ -376,8 +391,10 @@
     (locking this
       (let [changes (time (diff this new-state))]
         (vreset! state new-state)
+        (log changes)
         (util/run-later
-          (binding [*handler-atom* handler-atom]
+          (binding [*handler-atom* handler-atom
+                    *id-map* ids]
             (time (run-updates root changes))))))
     this)
   (update-handler! [this new-handler]
@@ -388,8 +405,10 @@
 
 (defn create-root [state]
   (let [handler (atom nil)
+        ids (WeakHashMap.)
         r (util/run-and-wait
-            (binding [*handler-atom* handler]
+            (binding [*handler-atom* handler
+                      *id-map* ids]
               (create-component state)))]
-    (Root. (volatile! state) handler r)))
+    (Root. (volatile! state) handler r ids)))
 

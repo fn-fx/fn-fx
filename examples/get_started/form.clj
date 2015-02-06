@@ -34,7 +34,7 @@
                                                  :GridPane/columnIndex 0
                                                  :GridPane/rowIndex 1}
                                                 {:type :TextField
-                                                 :id "user-name"
+                                                 :fn-fx/id :user-name
                                                  :GridPane/columnIndex 1
                                                  :GridPane/rowIndex 1}
                                                 {:type :Label
@@ -42,7 +42,7 @@
                                                  :GridPane/columnIndex 0
                                                  :GridPane/rowIndex 2}
                                                 {:type :PasswordField
-                                                 :id "password"
+                                                 :fn-fx/id :password
                                                  :GridPane/columnIndex 1
                                                  :GridPane/rowIndex 2}
 
@@ -51,8 +51,8 @@
                                                  :fn-fx/children #{:children}
                                                  :children [{:type :Button
                                                              :id :foo
-                                                             :onAction {:include #{["#user-name" :text]
-                                                                                   ["#password" :text]}
+                                                             :onAction {:include #{[:user-name :text]
+                                                                                   [:password :text]}
                                                                         :action :login}
                                                              :text "Sign in"}]
                                                  :GridPane/columnIndex 1
