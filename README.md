@@ -11,7 +11,7 @@ was a GUI to some backend process. Sometimes a desktop UI really is the simplest
 However, clojure developers have tranditionally shied away from adopting technologies such as Swing and JavaFX for fear
 of delving into the mess of mutability that is GUI programming. 
 
-This is where fn(fx) will attempt to help, by providing a functional interface over JavaFX
+This is the niche that fn(fx) attempts to fill, by providing a functional interface over JavaFX
 
 # How it works
 A developer describes a interface via a nested datastructure that maps quite closely to the naming conventions of JavaFX:
