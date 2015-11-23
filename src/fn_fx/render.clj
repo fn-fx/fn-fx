@@ -1,8 +1,6 @@
 (ns fn-fx.render
   (:import (javafx.embed.swing JFXPanel)
-           (javax.swing JFrame)
-           (javafx.application Application)
-           (javafx.scene Scene Node)
+           (javafx.scene Scene)
            (javafx.stage Stage)
            (java.lang.reflect Method Modifier)
            (javafx.collections ObservableList)
@@ -12,20 +10,18 @@
   (:require [fn-fx.util :as util]
             [fn-fx.diff :as diff]))
 
-(set! *warn-on-reflection* true)
+(set! *warn-on-reflection* false)
 
 (JFXPanel. )
 
 (def constructors (atom {}))
 (def types (atom {}))
 
-(def ^:dynamic *log* false)
+(def ^:dynamic *log* true)
 
 (defn log [form]
   (when *log*
-    (log form)))
-
-
+    (println form)))
 
 (declare create-component)
 (declare convert-observable-list)
@@ -34,20 +30,21 @@
 (def converter-code (atom (partition-all 2 [Integer/TYPE `int
                                             java.lang.Integer `int
                                             Double/TYPE `double
+                                            Boolean `boolean
+                                            Boolean/TYPE `boolean
                                             String `str
                                             EventHandler `create-event-handler
                                             ObservableList `convert-observable-list])))
 
 (defmacro import-components [& components]
   `(do ~@(for [component components]
-           (let [builder-name (symbol (str (name component) "Builder"))
+           (let [builder-name (symbol (str (name component)))
                  kw-name (->> (.lastIndexOf (name component) ".")
                               inc
                               (subs (name component))
                               keyword)
                  ]
              `(do (clojure.core/import ~component)
-                  (clojure.core/import ~builder-name)
                   (swap! converter-code conj [~component `create-component])
                   (swap! constructors assoc ~kw-name ~builder-name)
                   (swap! types assoc ~kw-name ~component))))))
@@ -69,8 +66,12 @@
   javafx.scene.layout.GridPane
   javafx.scene.text.Font
   javafx.scene.text.Text
-  javafx.geometry.Insets)
-
+  javafx.geometry.Insets
+  javafx.scene.control.Separator
+  javafx.scene.shape.Rectangle
+  javafx.scene.control.SplitPane
+  javafx.scene.layout.BorderPane
+  javafx.scene.text.TextFlow)
 
 (def get-enum-converter
   (memoize (fn [^Class to-tp]
@@ -87,7 +88,6 @@
                (log form)
                (eval form)))))
 
-
 (def get-converter
   (memoize (fn [^Class to-tp]
              (if (.isEnum to-tp)
@@ -98,49 +98,18 @@
                                 converter))
                             @converter-code))))))
 
-
-
-(def get-builder
+(def get-ctor
   (memoize
     (fn [nm]
       (let [ctor (@constructors nm)
             _ (assert ctor (str "No constructor for " nm))
-            form `(fn [] (. ~(@constructors nm) create))]
+            form `(fn [] (new ~(@constructors nm)))]
         (log form)
         (eval form)))))
 
 
 (def ^:dynamic *id-map*)
 
-
-(def get-builder-setter
-  (memoize
-    (fn [tp]
-      (let [^Class ctor (@constructors tp)
-            builder-sym (with-meta (gensym "builder")
-                                   {:tag (symbol (.getName ctor))})
-            val-sym (gensym "val")
-            clauses (for [m (.getMethods ctor)
-                          :when (Modifier/isPublic (.getModifiers ^Method m))
-                          :when (not (Modifier/isStatic (.getModifiers ^Method m)))
-                          :when (not (Modifier/isVolatile (.getModifiers ^Method m)))
-                          :when (= (.getParameterCount ^Method m) 1)
-                          :when (not (#{"applyTo"} (.getName ^Method m)))
-                          :let [arg-type (aget (.getParameterTypes ^Method m) 0)]
-                          :let [converter (get-converter arg-type)]
-                          :when converter]
-                      `[~(.getName ^Method m)
-                        (. ~builder-sym
-                           ~(symbol (.getName ^Method m))
-                           ~(with-meta `(~converter ~val-sym)
-                                       {:tag arg-type}))])
-            form `(fn [~builder-sym property# ~val-sym]
-                    (case (name property#)
-                      ~@(apply concat clauses)
-                      (println "Unknown property" property# "on" ~tp)
-                      #_(assert false (str "Unknown property" {:property-name property#}))))]
-        (log form)
-        (eval form)))))
 
 (def get-setter
   (memoize
@@ -227,7 +196,6 @@
         (log form)
         (eval form)))))
 
-
 (def ^:dynamic *handler-atom*)
 
 (defn create-event-handler [{:keys [include event-properties] :as template}]
@@ -259,19 +227,6 @@
                     event-properties)]
           (future (@handler-atom msg)))))))
 
-
-(def get-builder-build-fn
-  (memoize
-    (fn [tp]
-      (let [^Class ctor (@constructors tp)
-            builder-sym (with-meta (gensym "builder")
-                                   {:tag (symbol (.getName ctor))})
-            form `(fn [~builder-sym]
-                    (.build ~builder-sym))]
-        (log form)
-        (eval form)))))
-
-
 (defn convert-observable-list [itms]
   (FXCollections/observableArrayList ^java.util.Collection (mapv create-component itms)))
 
@@ -279,33 +234,29 @@
 
 (defn create-component [component]
   (let [tp (:type component)
-        builder (get-builder tp)
-        _ (assert builder (str "Can't find constructor for" tp))
-        builder (builder)
-        setter (get-builder-setter tp)]
+        ctor (get-ctor tp)
+        _ (assert ctor (str "Can't find constructor for" tp " with type tag of " (:type component)))
+        instance (ctor)
+        setter (get-setter (type instance))]
     (reduce-kv
       (fn [_ k v]
         (when (and (not (ignore-properties k))
                    (not (namespace k)))
-          (setter builder k v)))
+          (setter instance k v)))
       nil
       component)
-    (let [built ((get-builder-build-fn tp) builder)]
-      (reduce-kv
-        (fn [_ k v]
-          (when (and (not (ignore-properties k))
-                     (namespace k))
-            (let [tp (->> k namespace keyword (get @types))]
-              (assert tp (str "No static setter found for " (namespace k)))
-              ((get-static-setter tp) built (name k) v))))
-        nil
-        component)
-      (when-let [id (:fn-fx/id component)]
-        (.put ^WeakHashMap *id-map* id built))
-      built)))
-
-
-
+    (reduce-kv
+      (fn [_ k v]
+        (when (and (not (ignore-properties k))
+                   (namespace k))
+          (let [tp (->> k namespace keyword (get @types))]
+            (assert tp (str "No static setter found for " (namespace k)))
+            ((get-static-setter tp) instance (name k) v))))
+      nil
+      component)
+    (when-let [id (:fn-fx/id component)]
+      (.put ^WeakHashMap *id-map* id instance))
+    instance))
 
 (defprotocol IRunUpdate
   (-run-update [command control])
@@ -389,7 +340,8 @@
     (diff/diff @state new-state))
   (update! [this new-state]
     (locking this
-      (let [changes (time (diff this new-state))]
+      (let [changes (time (diff this new-state))
+            _ (println changes)]
         (vreset! state new-state)
         (log changes)
         (util/run-later
