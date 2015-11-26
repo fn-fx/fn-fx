@@ -27,6 +27,7 @@
 
 (defn constructor
   [tp]
+  (assert (not (empty? (.getConstructors tp))) (str "There is no public constructor for: " tp))
   (let [smallest (apply min-key (memfn getParameterCount) (.getConstructors tp))
         ctor (symbol (.getName smallest))
         params (into {} (map-indexed (fn [idx anns]
