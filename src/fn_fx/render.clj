@@ -17,7 +17,7 @@
 (def constructors (atom {}))
 (def types (atom {}))
 
-(def ^:dynamic *log* true)
+(def ^:dynamic *log* false)
 
 (defn log [form]
   (when *log*
@@ -30,9 +30,10 @@
 (def converter-code (atom (partition-all 2 [Integer/TYPE `int
                                             java.lang.Integer `int
                                             Double/TYPE `double
-                                            Boolean `boolean
+                                            java.lang.Double `double
                                             Boolean/TYPE `boolean
-                                            String `str
+                                            java.lang.Boolean `boolean
+                                            java.lang.String `str
                                             EventHandler `create-event-handler
                                             ObservableList `convert-observable-list])))
 
@@ -98,14 +99,62 @@
                                 converter))
                             @converter-code))))))
 
+(defn find-getters
+  [tp]
+  (for [m (.getMethods tp)
+        :let [mn (.getName m)]
+        :when (= 0 (.getParameterCount m))
+        :when (or (.startsWith mn "is") (.startsWith mn "get"))
+        :let [prop-name (cond
+                          (.startsWith mn "is") (.substring mn 2)
+                          (.startsWith mn "get") (.substring mn 3))]]
+    {:prop   (apply str (Character/toLowerCase ^Character (first prop-name)) (rest prop-name))
+     :getter {:name mn :ret-type (.getName (.getReturnType ^Method m))}}))
+
+(defn find-setters
+  [tp]
+  (for [m (.getMethods tp)
+        :when (= 1 (.getParameterCount m))
+        :let [mn (.getName m)]
+        :when (.startsWith mn "set")
+        :when (= Void/TYPE (.getReturnType m))
+        :let [prop-name (.substring mn 3)
+              ptype (aget (.getParameterTypes m) 0)]]
+    {:prop   (apply str (Character/toLowerCase ^Character (first prop-name)) (rest prop-name))
+     :setter {:name mn :param-type (.getName ptype)}}))
+
+; TODO: Make sure you're always feeding the arguments from the spec to the constructor in the right order.
+; TODO: Hook this up with the main fn-fx stuff, in place of builders.
+; TODO: Make sure all args to constructors pass through conversion.
+; TODO: Probably needs something to handle constructor var-args too (see KeyFrame for an example of what I mean)
+(defn constructor
+  [tp]
+  (assert (not= nil tp) "The template provided to the constructor must not be nil.")
+
+  (assert (not (empty? (.getConstructors tp))) (str "There is no public constructor for: " tp))
+  (let [smallest (apply min-key (memfn getParameterCount) (.getConstructors tp))
+        ctor (symbol (.getName smallest))
+        params (into {} (map-indexed (fn [idx anns]
+                                       (let [ann (first (filter
+                                                          (fn [ann] (= javafx.beans.NamedArg (.annotationType ann)))
+                                                          anns))]
+                                         [idx (keyword (.value ann))]))
+                                     (.getParameterAnnotations smallest)))
+        _ (println params)
+        form `(fn [template#]
+                (let [{:keys [~@(map (comp symbol name) (vals params))]} template#]
+                  (assert (every? #(not (nil? %)) (vector ~@(map (comp symbol name) (vals params))))
+                          "A required parameter is missing from the provided template.")
+                  (new ~ctor ~@(map (comp symbol name) (vals params)))))]
+    (log form)
+    (eval form)))
+
 (def get-ctor
   (memoize
     (fn [nm]
-      (let [ctor (@constructors nm)
-            _ (assert ctor (str "No constructor for " nm))
-            form `(fn [] (new ~(@constructors nm)))]
-        (log form)
-        (eval form)))))
+      (let [ctor (constructor (@constructors nm))
+            _ (assert ctor (str "No constructor for " nm))]
+        ctor))))
 
 
 (def ^:dynamic *id-map*)
@@ -233,10 +282,8 @@
 (def ignore-properties #{:type :fn-fx/children :fn-fx/id})
 
 (defn create-component [component]
-  (let [tp (:type component)
-        ctor (get-ctor tp)
-        _ (assert ctor (str "Can't find constructor for" tp " with type tag of " (:type component)))
-        instance (ctor)
+  (let [ctor (get-ctor (:type component))
+        instance (ctor component)
         setter (get-setter (type instance))]
     (reduce-kv
       (fn [_ k v]

@@ -25,8 +25,12 @@
     {:prop   (apply str (Character/toLowerCase ^Character (first prop-name)) (rest prop-name))
      :setter {:name mn :param-type (.getName ptype)}}))
 
+; TODO: Make sure you're always feeding the arguments from the spec to the constructor in the right order.
+; TODO: Hook this up with the main fn-fx stuff, in place of builders.
+; TODO: Make sure all args to constructors pass through conversion.
 (defn constructor
   [tp]
+  (assert (not= nil tp) "The template provided to the constructor must not be nil.")
   (assert (not (empty? (.getConstructors tp))) (str "There is no public constructor for: " tp))
   (let [smallest (apply min-key (memfn getParameterCount) (.getConstructors tp))
         ctor (symbol (.getName smallest))
