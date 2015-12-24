@@ -53,7 +53,7 @@
   (let [changes (reduce
                   (fn [changes child]
                     (if (sequential? (get a child))
-                        (rfn changes (->ListChild child (diff-list (get a child) (get b child))))
+                      (rfn changes (->ListChild child (diff-list (get a child) (get b child))))
                       (let [d (diff (get a child) (get b child))]
                         (if (empty? d)
                           changes
@@ -62,11 +62,65 @@
                   (:fn-fx/children a))]
     changes))
 
+(defprotocol IComponent
+  (render-result [this])
+  (needs-update [old new])
+  (merge-component [old new])
+  (get-props [this])
+  (get-render-fn [this])
+  (get-render-data [this]))
+
+(deftype Component [^:volatile-mutable props
+                    ^:volatile-mutable render-fn
+                    ^:volatile-mutable render-result]
+  IComponent
+  (get-props [this] props)
+  (get-render-fn [this] render-fn)
+  (get-render-data [this] render-result)
+  (render-result [this]
+    (if render-result
+      render-result
+      (let [result (render-fn props)]
+        (set! render-result result)
+        result)))
+  (needs-update [old new]
+    (or (not= (get-props old)
+              (get-props new))
+        (not= (get-render-fn old)
+              (get-render-fn new))))
+  (merge-component [from to]
+    (set! props (get-props to))
+    (set! render-fn (get-render-fn to))
+    (set! render-result (get-render-data to)))
+
+  )
+
 (defn diff [a b]
-  (if (identical? (:type a) (:type b))
-    (if (identical? a b)
-      nil
-      (->> #{}
-           (diff-properties a b conj)
-           (diff-children a b conj)))
-    #{(->Create b)}))
+  (if (or (and (map? a)
+               (map? b))
+          (and (nil? a)
+               (map? b))
+          (and (map? a)
+               (nil? b)))
+    (if (identical? (:type a) (:type b))
+      (if (identical? a b)
+        nil
+        (->> #{}
+             (diff-properties a b conj)
+             (diff-children a b conj)))
+      #{(->Create b)})
+
+    (if (and (nil? a)
+             (satisfies? IComponent b))
+      #{(->Create (render-result b))}
+
+      (if (and (satisfies? IComponent a)
+               (satisfies? IComponent b))
+        (if (needs-update a b)
+          (diff (render-result a)
+                (render-result b))
+          (do (merge-component a b)
+              nil))
+
+
+        (assert false (str "Can't compare " (type a) " " (type b)))))))
