@@ -61,7 +61,7 @@
           Deleted (delete-indexed-child! dom parent-node k idx node))))))
 
 (defn diff [dom a b]
-  (println (val-type a) (val-type b) "->>> " (:dom-node a))
+  (println (val-type a) (val-type b) "->>> " (:dom-node a) (:type b))
   (match [(val-type a) (val-type b)]
     [:nil :comp] (let [node (create-component! dom (:type b) (:props b))]
                    (assert node "No Node returned by create-component!")

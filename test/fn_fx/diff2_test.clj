@@ -161,4 +161,20 @@
                    :log [[:create 1 :list {}]
                          [:create 2 :text {:text "Hey"}]
                          [:set-indexed-child 1 :children 0 2]
-                         [:delete-indexed-child 1 :children 0 2]]})))))
+                         [:delete-indexed-child 1 :children 0 2]]}))))
+
+
+  (testing "complex nesting"
+    (let [log (log)
+          component-a (component :Stage {:title "Hello"}
+                                 {:scene (component :ListView {}
+                                                    {:items [(component :Button
+                                                                        {:text "Hello"})]})})]
+
+      (is (= (->Created 1) (diff log nil component-a)))
+      (is (= @log {:id 3
+                   :log [[:create 1 :Stage {:title "Hello"}]
+                         [:create 2 :ListView {}]
+                         [:create 3 :Button {:text "Hello"}]
+                         [:set-indexed-child 2 :items 0 3]
+                         [:set-child 1 :scene 2]]})))))
