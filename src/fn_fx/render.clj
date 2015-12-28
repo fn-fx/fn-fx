@@ -4,11 +4,13 @@
            (javafx.application Application)
            (javafx.scene Scene Node)
            (javafx.stage Stage)
+           (javafx.util Builder)
            (java.lang.reflect Method Modifier)
            (javafx.collections ObservableList)
            (javafx.event EventHandler)
            (javafx.collections FXCollections)
-           (java.util WeakHashMap))
+           (java.util WeakHashMap)
+           (org.reflections Reflections))
   (:require [fn-fx.util :as util]
             [fn-fx.diff :as diff]))
 
@@ -26,6 +28,15 @@
   (when *log*
     (log form)))
 
+(defn scan-all []
+  (let [ref (Reflections. "javafx" nil)
+        builders (.getSubTypesOf ref Builder)]
+    (vec (for [^Class builder builders
+               :when (not (.startsWith (.getName builder)
+                                       "javafx.fxml."))]
+           (Class/forName (subs (.getName builder) 0
+                                (- (count (.getName builder))
+                                   (count "Builder"))))))))
 
 
 (declare create-component)
@@ -39,49 +50,35 @@
                                             EventHandler `create-event-handler
                                             ObservableList `convert-observable-list])))
 
-(defmacro import-components [& components]
-  `(do ~@(for [component components]
-           (let [builder-name (symbol (str (name component) "Builder"))
-                 kw-name      (->> (.lastIndexOf (name component) ".")
-                                   inc
-                                   (subs (name component))
-                                   keyword)
-                 ]
-             `(do (clojure.core/import ~component)
-                  (clojure.core/import ~builder-name)
-                  (swap! converter-code conj [~component `create-component])
-                  (swap! constructors assoc ~kw-name ~builder-name)
-                  (swap! types assoc ~kw-name ~component)
-                  (swap! types->kw assoc ~component ~kw-name))))))
+(defn import-components [components]
+  (doseq [component components]
+    (let [component (if (instance? Class component)
+                      (symbol (.getName ^Class component))
+                      component)
+          klass     (Class/forName (name component))
+          builder-name (symbol (str (name component) "Builder"))
+          kw-name      (->> (.lastIndexOf (name component) ".")
+                            inc
+                            (subs (name component))
+                            util/camel->kabob
+                            keyword)]
+      (swap! converter-code conj [klass create-component])
+      (swap! constructors assoc kw-name (Class/forName (name builder-name)))
+      (swap! types assoc kw-name klass)
+      (swap! types->kw assoc klass kw-name))))
 
+;; Import everything inside JavaFX that we are aware of
 (import-components
-  javafx.stage.Stage
-  javafx.stage.Window
-  javafx.scene.Scene
-  javafx.scene.Parent
-  javafx.scene.control.Button
-  javafx.scene.control.Label
-  javafx.scene.control.ListView
-  javafx.scene.control.TextField
-  javafx.scene.control.PasswordField
-  javafx.scene.control.MultipleSelectionModel
-  javafx.scene.layout.VBox
-  javafx.scene.layout.HBox
-  javafx.scene.layout.StackPane
-  javafx.scene.layout.GridPane
-  javafx.scene.text.Font
-  javafx.scene.text.Text
-  javafx.geometry.Insets)
+  (scan-all))
 
 
 (def default-properties
-  {:Scene
+  {:scene
    {:root (fn [] (javafx.scene.layout.StackPane.))}})
 
 (def synthetic-properties
-  {:Stage
+  {:stage
    {:shown {:set (fn [^Stage stage property val]
-                   (println "FFFFPPPP!!!")
                    (if val
                      (.show stage)
                      (.hide stage)))}}})
@@ -182,7 +179,6 @@
                          (case property#
                            ~@(apply concat clauses)
                            (let [syn# (get-in synthetic-properties [(@types->kw ~tp) property# :set])]
-                             (println "0------------- " property#)
                              (if syn#
                                (syn# ~obj-sym property# ~val-sym)
                                (println "Unknown property" property# " on " ~tp)))))]
@@ -291,7 +287,6 @@
 
 
 (defn convert-observable-list [itms]
-  (println "CONVERTING " itms)
   (if (instance? ObservableList itms)
     itms
     (FXCollections/observableArrayList ^java.util.Collection (mapv create-component itms))))
@@ -299,7 +294,6 @@
 (def ignore-properties #{:type :fn-fx/children :fn-fx/id})
 
 (defn create-component [component]
-  (println "COMP: ---" component)
   (if (not (map? component))
     component
     (let [tp      (:type component)
@@ -318,18 +312,15 @@
 
 
       ;; Fill in default properties
-      (println "DEFAULS FOR " (default-properties tp) tp)
       (reduce-kv
         (fn [_ k v]
-          (println "FILLING " k v)
           (when-not (k component)
             (setter builder k (v))))
         nil
         (default-properties tp))
 
-      (let [built ((get-builder-build-fn tp) builder)
+      (let [built        ((get-builder-build-fn tp) builder)
             built-setter (get-setter (@types tp))]
-        (println "TESTING SYN" (synthetic-properties tp))
         (reduce-kv
           (fn [_ k v]
             (when (synthetic-properties tp)

@@ -1,6 +1,7 @@
 (ns fn-fx.diff2
   (:require [clojure.core.match :refer [match]]))
 
+(declare diff)
 
 (defprotocol IDom
   (create-component! [this type spec])
@@ -19,9 +20,6 @@
 (defrecord Deleted [node])
 (defrecord Noop [node])
 
-(defn diff-children [dom a b]
-  )
-
 (defn render-user-component [{:keys [props render-fn render-result dirty?]}]
   (when (not @render-result)
     (vreset! dirty? false)
@@ -36,8 +34,6 @@
 
 (defn needs-update? [from to]
   (let [{:keys [props render-fn render-result dirty?]} to]
-    (println "PROPS " @props @(:props from) @(:dirty? from))
-
     (if (and (= @(:props from) @props)
              (= (:type-k from) (:type-k to)))
       (do (vreset! render-result @(:render-result from))
@@ -58,10 +54,10 @@
         (condp instance? result
           ;; TODO: Unmount?
           Created (set-indexed-child! dom parent-node k idx node)
-          Deleted (delete-indexed-child! dom parent-node k idx node))))))
+          Deleted (delete-indexed-child! dom parent-node k idx node)
+          Updated nil)))))
 
 (defn diff [dom a b]
-  (println (val-type a) (val-type b) "->>> " (:dom-node a) (:type b))
   (match [(val-type a) (val-type b)]
     [:nil :comp] (let [node (create-component! dom (:type b) (:props b))]
                    (assert node "No Node returned by create-component!")

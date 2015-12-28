@@ -1,4 +1,5 @@
 (ns fn-fx.util
+  (:require [clojure.string :as string])
   (:import (javafx.application Platform)))
 
 (Platform/setImplicitExit false)
@@ -28,3 +29,23 @@
        (if (wrapped-exception? v#)
          (throw (:ex v#))
          v#))))
+
+
+(defn kabob->camel [from]
+  (let [s (string/split (name from) #"\-")]
+    (apply str (first s) (map string/capitalize (next s)))))
+
+(alter-var-root #'kabob->camel memoize)
+
+(defn kabob->class [from]
+  (let [s (string/split (name from) #"\-")]
+    (apply str (map string/capitalize s))))
+
+(alter-var-root #'kabob->class memoize)
+
+
+(defn camel->kabob [from]
+  (let [s (string/split (name from) #"(?=[A-Z])" )]
+    (apply str (interpose "-" (map string/lower-case s)))))
+
+(alter-var-root #'camel->kabob memoize)

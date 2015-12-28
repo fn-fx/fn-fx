@@ -9,18 +9,15 @@
 (deftype FXDom []
   IDom
   (create-component! [this type spec]
-    (println "Create " type spec)
     (run-and-wait
       (render/create-component (assoc spec :type type))))
 
   (set-property! [this node property value]
-    (println "Property " node property value)
     (let [setter (render/get-setter (type node))]
       (run-and-wait
         (setter node property value))))
 
   (set-child! [this parent k child]
-    (println "Child " parent k child)
     (let [setter (render/get-setter (type parent))]
       (run-and-wait
         (setter parent k child))))
@@ -28,11 +25,16 @@
   (set-indexed-child! [this parent k idx child]
     (let [getter (render/get-getter (type parent))]
       (run-and-wait
-        (println "Indexed Child" parent k idx child)
         (let [^List lst (getter parent k)]
           (assert (= idx (count lst)) "TODO: Implement this")
-          (.add lst child)
-          (println "done i"))))))
+          (.add lst child)))))
+
+  (delete-indexed-child! [this parent k idx child]
+    (let [getter (render/get-getter (type parent))]
+      (run-and-wait
+        (let [^List lst (getter parent k)]
+          (assert (= idx (dec (count lst))) "TODO: Implement this")
+          (.remove lst idx))))))
 
 
 
