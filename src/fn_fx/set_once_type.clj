@@ -13,7 +13,6 @@
                                   (assoc (meta sym) :volatile-mutable true)))
                      fields)
         v-sym  (gensym "v")]
-    (println fields)
     `(deftype ~tp-name ~fields
        ISetOnce
        (set-once! [this# k# ~v-sym]
@@ -21,7 +20,6 @@
          (case k#
            ~@(mapcat
                (fn [x]
-                 (println x (type x) (name x))
                  `[~(keyword (name x))
                    (~'set! ~x ~v-sym)])
                fields))

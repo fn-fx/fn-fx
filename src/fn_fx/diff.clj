@@ -1,6 +1,7 @@
 (ns fn-fx.diff
   (:require [clojure.core.match :refer [match]]
-            [fn-fx.set-once-type :refer [defquasitype set-once!]]))
+            [fn-fx.set-once-type :refer [defquasitype set-once!]]
+            [fn-fx.util :as util]))
 
 (declare diff)
 
@@ -16,26 +17,31 @@
 
 (defquasitype UserComponent [type props render-fn render-result])
 
+(defprotocol IUserComponent
+  (render [this props])
+  (should-update? [this old-props new-props]))
+
 (defrecord Created [node])
 (defrecord Updated [node])
 (defrecord Deleted [node])
 (defrecord Noop [node])
 
-(defn render-user-component [{:keys [props render-fn render-result] :as comp}]
+(defn render-user-component [{:keys [props render-result] :as comp}]
   (when (not render-result)
-    (set-once! comp :render-result (render-fn props)))
+    (set-once! comp :render-result (render comp props)))
   (:render-result comp))
 
 (defn val-type [a]
   (cond
     (nil? a) :nil
     (instance? Component a) :comp
-    (instance? UserComponent a) :ucomp))
+    (satisfies? IUserComponent a) :ucomp
+    :else (assert false (str "Bad value type " (type a)))))
 
 (defn needs-update? [from to]
-  (let [{:keys [props render-fn render-result]} to]
-    (if (and (= (:props from) props)
-             (= (:type-k from) (:type-k to)))
+  (let [{:keys [props]} to]
+    (if (and (= (:type from) (:type to))
+             (should-update? to (:props from) props))
       (do (set-once! to :render-result (:render-result from))
           false)
       (do (set-once! to :render-result nil)
@@ -114,9 +120,28 @@
   ([type spec children]
    (->Component type nil spec children)))
 
+(def valid-ui-fns '#{render should-update?})
 
-(defn user-component
-  ([type-k render-fn]
-   (->UserComponent type-k nil render-fn nil))
-  ([type-k props render-fn]
-   (->UserComponent type-k props render-fn nil)))
+(defmacro defui [nm & fns]
+  (let [has-should-update? (atom false)
+
+        mp (reduce
+             (fn [acc [nm :as fn]]
+               (assert (valid-ui-fns nm) (str "Invalid UI function " nm))
+               (when (= nm 'should-update?)
+                 (reset! has-should-update? true))
+               (conj acc fn))
+             []
+             fns)]
+    `(let [kw# (keyword (name (.getName ^clojure.lang.Namespace *ns*)) ~(name nm))]
+           (defquasitype ~nm [~'type ~'props ~'render-result]
+                       IUserComponent
+                       ~@mp
+                       ~@(when (not @has-should-update?)
+                           `[(should-update? [this# old-props# new-props#]
+                                           (= old-props# new-props#))]))
+         (defn  ~(symbol (util/camel->kabob nm)) [& {:as props#}]
+           (~(symbol (str "->" (name nm)))
+             kw#
+             props#
+             nil)))))

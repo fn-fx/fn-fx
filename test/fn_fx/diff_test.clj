@@ -50,26 +50,33 @@
                          [:set-child 1 :root 2]]}))))
 
   (testing "from nil to user component"
+
+    (defui SimpleComponent
+      (render [this props]
+        (component :button {:text "Hello World"})))
+
+
     (let [log       (log)
-          component (user-component
-                      :foo
-                      (fn [props]
-                        (component :button {:text "Hello World"})))]
+          component (simple-component)]
 
       (is (= (->Created 1) (diff log nil component)))
       (is (= @log {:id  1
                    :log [[:create 1 :button {:text "Hello World"}]]}))))
 
   (testing "from nil to nested user components"
+
+    (defui InternalComponent
+      (render [this props]
+        (component :button {:text "Hello World"})))
+
+    (defui NestedComponent
+      (render [this props]
+        (component :stage {:text "Hey"}
+                   {:root (internal-component)})))
+
+
     (let [log       (log)
-          component (user-component
-                      :foo
-                      (fn [props]
-                        (component :stage {:text "Hey"}
-                                   {:root (user-component
-                                            :foo
-                                            (fn [props]
-                                              (component :button {:text "Hello World"})))})))]
+          component (nested-component)]
       (is (= (->Created 1) (diff log nil component)))
       (is (= @log {:id  2
                    :log [[:create 1 :stage {:text "Hey"}]
@@ -103,18 +110,16 @@
                          [:create 2 :text {:text "test2"}]]}))))
 
   (testing "can diff two user components"
-    (println "--------")
+    (defui BranchingComponent
+      (render [this {:keys [value rendered?]}]
+        (reset! rendered? true)
+        (if-not value
+          (component :button {:text "Start"})
+          (component :button {:text "End"}))))
+
     (let [log          (log)
-          rendered? (atom false)
-          component-fn (fn [props]
-                         (user-component
-                           :foo
-                           props
-                           (fn [props]
-                             (reset! rendered? true)
-                             (if-not props
-                               (component :button {:text "Start"})
-                               (component :button {:text "End"})))))
+          rendered?    (atom false)
+          component-fn (partial branching-component :rendered? rendered? :value)
           state-a      (component-fn false)]
       (is (= (->Created 1) (diff log nil state-a)))
       (is @rendered?)
@@ -132,32 +137,32 @@
         (let [state-c (component-fn true)]
           (is (= (->Updated 1) (diff log state-b state-c))))
 
-        (is (= @log {:id 1
+        (is (= @log {:id  1
                      :log [[:create 1 :button {:text "Start"}]
                            [:set-property 1 :text "End"]]}))))))
 
 
 (deftest component-child-list-diffing
   (testing "can add children to a list"
-    (let [log (log)
+    (let [log         (log)
           component-a (component :list {} {:children []})
           component-b (component :list {} {:children [(component :text {:text "Hey"})]})
           component-c (component :list {} {:children []})]
       (is (= (->Created 1) (diff log nil component-a)))
 
-      (is (= @log {:id 1
+      (is (= @log {:id  1
                    :log [[:create 1 :list {}]]}))
 
       (is (= (->Updated 1) (diff log component-a component-b)))
 
-      (is (= @log {:id 2
+      (is (= @log {:id  2
                    :log [[:create 1 :list {}]
                          [:create 2 :text {:text "Hey"}]
                          [:set-indexed-child 1 :children 0 2]]}))
 
       (is (= (->Updated 1) (diff log component-b component-c)))
 
-      (is (= @log {:id 2
+      (is (= @log {:id  2
                    :log [[:create 1 :list {}]
                          [:create 2 :text {:text "Hey"}]
                          [:set-indexed-child 1 :children 0 2]
@@ -165,14 +170,14 @@
 
 
   (testing "complex nesting"
-    (let [log (log)
+    (let [log         (log)
           component-a (component :Stage {:title "Hello"}
                                  {:scene (component :ListView {}
                                                     {:items [(component :Button
                                                                         {:text "Hello"})]})})]
 
       (is (= (->Created 1) (diff log nil component-a)))
-      (is (= @log {:id 3
+      (is (= @log {:id  3
                    :log [[:create 1 :Stage {:title "Hello"}]
                          [:create 2 :ListView {}]
                          [:create 3 :Button {:text "Hello"}]
