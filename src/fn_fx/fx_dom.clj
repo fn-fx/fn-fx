@@ -1,6 +1,6 @@
 (ns fn-fx.fx-dom
   (:require [fn-fx.render :as render]
-            [fn-fx.diff2 :refer [IDom diff component]]
+            [fn-fx.diff :refer [IDom diff component]]
             [fn-fx.util :refer [run-and-wait run-later]])
   (:import (java.util List)))
 
@@ -10,7 +10,7 @@
   IDom
   (create-component! [this type spec]
     (run-and-wait
-      (render/create-component (assoc spec :type type))))
+      (render/create-component type spec)))
 
   (set-property! [this node property value]
     (let [setter (render/get-setter (type node))]

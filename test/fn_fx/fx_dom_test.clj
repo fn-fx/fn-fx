@@ -1,13 +1,12 @@
 (ns fn-fx.fx-dom-test
   (:require [fn-fx.fx-dom :as dom]
-            [fn-fx.diff2 :refer [component]]
-            [fn-fx.render :refer [get-getter]]
-            [clojure.test :refer :all]))
+            [fn-fx.diff :refer [component]]
+            [fn-fx.render :refer [get-getter ui]]
+            [clojure.test :refer :all])
+  (:import (javafx.scene.layout GridPane)))
 
 (defn get-prop [comp k]
   {:pre [comp k]}
-  (println (type comp))
-
   (let [getter (get-getter (type comp))]
     (assert getter)
     (getter comp k)))
@@ -70,6 +69,29 @@
                    first
                    (get-prop :text))
                "Hello0"))))))
+
+
+(deftest static-member-tests
+  (let [spec (ui :stage :title "Login"
+                 :scene (ui :scene
+                            :root (ui :grid-pane
+                                      :children [(ui :text
+                                                     :text "Welcome"
+                                                     :grid-pane/columnIndex 0
+                                                     :grid-pane/rowIndex 0
+                                                     :grid-pane/columnSpan 2
+                                                     :grid-pane/rowSpan 1)]
+                                      )))
+        {:keys [root] :as app} (dom/app spec)]
+    (is root)
+
+    (let [children (-> root
+                       (get-prop :scene)
+                       (get-prop :root)
+                       (get-prop :children))]
+      (is (= (count children) 1))
+      (is (= (GridPane/getColumnSpan (first children)) 2)))))
+
 
 
 

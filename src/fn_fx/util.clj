@@ -21,10 +21,7 @@
                          ~@(butlast body)
                          (deliver p# ~(last body))
                          (catch Throwable ex#
-                           (deliver p# (->WrappedException ex#)))
-
-                         )
-                       (println "Done"))))
+                           (deliver p# (->WrappedException ex#)))))))
      (let [v# @p#]
        (if (wrapped-exception? v#)
          (throw (:ex v#))

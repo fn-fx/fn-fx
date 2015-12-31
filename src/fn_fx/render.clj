@@ -29,7 +29,7 @@
     (log form)))
 
 (defn scan-all []
-  (let [ref (Reflections. "javafx" nil)
+  (let [ref      (Reflections. "javafx" nil)
         builders (.getSubTypesOf ref Builder)]
     (vec (for [^Class builder builders
                :when (not (.startsWith (.getName builder)
@@ -52,17 +52,17 @@
 
 (defn import-components [components]
   (doseq [component components]
-    (let [component (if (instance? Class component)
-                      (symbol (.getName ^Class component))
-                      component)
-          klass     (Class/forName (name component))
+    (let [component    (if (instance? Class component)
+                         (symbol (.getName ^Class component))
+                         component)
+          klass        (Class/forName (name component))
           builder-name (symbol (str (name component) "Builder"))
           kw-name      (->> (.lastIndexOf (name component) ".")
                             inc
                             (subs (name component))
                             util/camel->kabob
                             keyword)]
-      (swap! converter-code conj [klass create-component])
+      (swap! converter-code conj [klass identity])
       (swap! constructors assoc kw-name (Class/forName (name builder-name)))
       (swap! types assoc kw-name klass)
       (swap! types->kw assoc klass kw-name))))
@@ -152,6 +152,23 @@
                              #_(assert false (str "Unknown property" {:property-name property#}))))]
         (log form)
         (eval form)))))
+
+(def primitive-properties #{Integer Long Double Float String BigDecimal BigInteger})
+
+(def children-properties
+  (memoize
+    (fn [^Class tp]
+      (set (for [m (.getMethods tp)
+                 :when (.startsWith (.getName ^Method m) "get")
+                 :let [arg-type (.getReturnType ^Method m)]
+                 :let [converter (get-converter arg-type)]
+                 :when (not (primitive-properties arg-type))
+                 :let [prop-name (let [mn (subs (.getName ^Method m) 3)]
+                                   (str (.toLowerCase (subs mn 0 1)) (subs mn 1)))]
+                 :when converter]
+             (keyword prop-name))))))
+
+
 
 (def get-setter
   (memoize
@@ -293,160 +310,60 @@
 
 (def ignore-properties #{:type :fn-fx/children :fn-fx/id})
 
-(defn create-component [component]
-  (if (not (map? component))
-    component
-    (let [tp      (:type component)
-          builder (get-builder tp)
-          _       (assert builder (str "Can't find constructor for" tp (pr-str component)))
-          builder (builder)
-          setter  (get-builder-setter tp)]
+(defn create-component [tp component]
+  {:pre [(keyword? tp)]}
+  (let [builder (get-builder tp)
+        _       (assert builder (str "Can't find constructor for" tp (pr-str component)))
+        builder (builder)
+        setter  (get-builder-setter tp)]
+    (reduce-kv
+      (fn [_ k v]
+        (when (and (not (ignore-properties k))
+                   (not (synthetic-properties k))
+                   (not (namespace k)))
+          (setter builder k v)))
+      nil
+      component)
+
+
+    ;; Fill in default properties
+    (reduce-kv
+      (fn [_ k v]
+        (when-not (k component)
+          (setter builder k (v))))
+      nil
+      (default-properties tp))
+
+    (let [built        ((get-builder-build-fn tp) builder)
+          built-setter (get-setter (@types tp))]
       (reduce-kv
         (fn [_ k v]
-          (when (and (not (ignore-properties k))
-                     (not (synthetic-properties k))
-                     (not (namespace k)))
-            (setter builder k v)))
+          (when (synthetic-properties tp)
+            (built-setter built k v)))
         nil
         component)
 
 
-      ;; Fill in default properties
       (reduce-kv
         (fn [_ k v]
-          (when-not (k component)
-            (setter builder k (v))))
+          (when (and (not (ignore-properties k))
+                     (namespace k))
+            (let [tp (->> k namespace keyword (get @types))]
+              (assert tp (str "No static setter found for " (namespace k)))
+              ((get-static-setter tp) built (name k) v))))
         nil
-        (default-properties tp))
+        component)
+      (when-let [id (:fn-fx/id component)]
+        (.put ^WeakHashMap *id-map* id built))
+      built)))
 
-      (let [built        ((get-builder-build-fn tp) builder)
-            built-setter (get-setter (@types tp))]
-        (reduce-kv
-          (fn [_ k v]
-            (when (synthetic-properties tp)
-              (built-setter built k v)))
-          nil
-          component)
+(defn ui [type & {:as props}]
+  (let [props-col (children-properties (@types type))
+        grouped (reduce-kv
+                  (fn [acc k v]
+                    (assoc-in acc [(contains? props-col k) k] v))
+                  {}
+                  props)]
+    (diff/component type (grouped false) (grouped true))))
 
-
-        (reduce-kv
-          (fn [_ k v]
-            (when (and (not (ignore-properties k))
-                       (namespace k))
-              (let [tp (->> k namespace keyword (get @types))]
-                (assert tp (str "No static setter found for " (namespace k)))
-                ((get-static-setter tp) built (name k) v))))
-          nil
-          component)
-        (when-let [id (:fn-fx/id component)]
-          (.put ^WeakHashMap *id-map* id built))
-        built))))
-
-
-
-
-(defprotocol IRunUpdate
-  (-run-update [command control])
-  (-run-indexed-update [command lst idx control]))
-
-(declare run-updates)
-
-(extend-protocol IRunUpdate
-  fn_fx.diff.SetProperty
-  (-run-update [{:keys [property-name value]} control]
-    (if (identical? property-name :fn-fx/id)
-      (do (.put ^WeakHashMap *id-map* value control)
-          control)
-      (let [f (get-setter (type control))]
-        (assert f)
-        (f control property-name value)
-        control)))
-  (-run-indexed-update [command lst idx control]
-    (-run-update command control)))
-
-(extend-protocol IRunUpdate
-  fn_fx.diff.Child
-  (-run-update [{:keys [property-name updates]} control]
-    (let [f     (get-getter (type control))
-          child (f control property-name)]
-      (run-updates child updates))))
-
-(extend-protocol IRunUpdate
-  fn_fx.diff.ListDelete
-  (-run-indexed-update [_ lst idx control]
-    (.remove ^java.util.List lst (int idx))))
-
-(extend-type fn_fx.diff.Create
-  IRunUpdate
-  (-run-indexed-update [{:keys [template]} lst idx control]
-    (.add ^java.util.List lst (int idx) (create-component template))
-    nil))
-
-
-(extend-protocol IRunUpdate
-  fn_fx.diff.ListChild
-  (-run-update [{:keys [property-name updates]} control]
-    (let [f                          (get-getter (type control))
-          ^java.util.List child-list (f control property-name)]
-      (reduce
-        (fn [_ [idx commands]]
-          (if (set? commands)
-            (reduce
-              (fn [_ command]
-                (if (<= (count child-list) idx)
-                  (-run-indexed-update command child-list idx nil)
-                  (-run-indexed-update command child-list idx (.get child-list (int idx)))))
-              nil
-              commands)
-            (if (<= (count child-list) idx)
-              (-run-indexed-update commands child-list idx nil)
-              (-run-indexed-update commands child-list idx (.get child-list (int idx))))))
-        nil
-        updates)))
-  (-run-indexed-update [this lst idx control]
-    (-run-update this control)))
-
-(defn run-updates [root commands]
-  (reduce
-    (fn [root command]
-      (assert root)
-      (-run-update command root))
-    root
-    commands))
-
-(defprotocol IRoot
-  (update! [this new-state])
-  (diff [this new-state])
-  (update-handler! [this new-handler])
-  (show! [this]))
-
-
-(deftype Root [state handler-atom root ids]
-  IRoot
-  (diff [this new-state]
-    (diff/diff @state new-state))
-  (update! [this new-state]
-    (locking this
-      (let [changes (time (diff this new-state))]
-        (vreset! state new-state)
-        (log changes)
-        (util/run-later
-          (binding [*handler-atom* handler-atom
-                    *id-map* ids]
-            (time (run-updates root changes))))))
-    this)
-  (update-handler! [this new-handler]
-    (reset! handler-atom new-handler))
-  (show! [this]
-    (util/run-and-wait
-      (.show ^Stage root))))
-
-(defn create-root [state]
-  (let [handler (atom nil)
-        ids     (WeakHashMap.)
-        r       (util/run-and-wait
-                  (binding [*handler-atom* handler
-                            *id-map* ids]
-                    (create-component state)))]
-    (Root. (volatile! state) handler r ids)))
 
