@@ -1,6 +1,6 @@
 (ns fn-fx.fx-dom-test
   (:require [fn-fx.fx-dom :as dom]
-            [fn-fx.diff :refer [component]]
+            [fn-fx.diff :refer [component defui render should-update?]]
             [fn-fx.render :refer [get-getter ui]]
             [clojure.test :refer :all])
   (:import (javafx.scene.layout GridPane)))
@@ -91,6 +91,43 @@
                        (get-prop :children))]
       (is (= (count children) 1))
       (is (= (GridPane/getColumnSpan (first children)) 2)))))
+
+
+(deftest component-test
+  (defui LabeledButton
+    (render [this {:keys [value]}]
+      (ui :button :text (str "Value " value))))
+
+  (defui MainArea
+    (render [this {:keys [value]}]
+      (ui :stage :title "Hello"
+          :scene (ui :scene
+                     :root (labeled-button :value value)))))
+
+  (let [{:keys [root] :as prev} (dom/app (main-area :value 42))]
+    (is root)
+
+    (is (= (-> root
+               (get-prop :scene)
+               (get-prop :root)
+               (get-prop :text))
+           "Value 42"))
+
+
+    (let [{:keys [root] :as nxt} (dom/update-app prev (main-area :value 43))]
+      (is root)
+
+      (is (= (-> root
+                 (get-prop :scene)
+                 (get-prop :root)
+                 (get-prop :text))
+             "Value 43")))
+
+
+
+    )
+
+  )
 
 
 

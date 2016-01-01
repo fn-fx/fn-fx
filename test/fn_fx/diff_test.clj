@@ -183,3 +183,31 @@
                          [:create 3 :Button {:text "Hello"}]
                          [:set-indexed-child 2 :items 0 3]
                          [:set-child 1 :scene 2]]})))))
+
+
+(deftest component-should-update-tests
+  (testing "hard-coded always update"
+    (defui AlwaysUpdating
+      (render [this {:keys [rendered?]}]
+        (reset! rendered? true)
+        (component :button {:text "Hey"}))
+      (should-update? [this old-props new-props]
+        true))
+
+    (let [log (log)
+          rendered? (atom false)
+          first (always-updating :rendered? rendered?)]
+      (is (= (->Created 1) (diff log nil first)))
+      (is @rendered?)
+
+      (is (= @log {:id 1
+
+                   :log [[:create 1 :button {:text "Hey"}]]}))
+
+      (reset! rendered? false)
+
+      (is (= (->Noop 1) (diff log first (always-updating :rendered? rendered?))))
+      (is rendered? true)
+
+      (is (= @log {:id 1
+                   :log [[:create 1 :button {:text "Hey"}]]})))))
