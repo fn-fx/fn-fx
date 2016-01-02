@@ -140,20 +140,21 @@
                               :let [arg-type (aget (.getParameterTypes ^Method m) 0)]
                               :let [converter (get-converter arg-type)]
                               :when converter]
-                          `[~(.getName ^Method m)
+                          `[~(keyword (util/camel->kabob (.getName ^Method m)))
                             (. ~builder-sym
                                ~(symbol (.getName ^Method m))
                                ~(with-meta `(~converter ~val-sym)
                                            {:tag arg-type}))])
             form        `(fn [~builder-sym property# ~val-sym]
-                           (case (name property#)
+                           (case property#
                              ~@(apply concat clauses)
                              (println "Unknown property" property# "on" ~tp)
                              #_(assert false (str "Unknown property" {:property-name property#}))))]
         (log form)
         (eval form)))))
 
-(def primitive-properties #{Integer Long Double Float String BigDecimal BigInteger})
+(def primitive-properties #{Integer Long Double Float String BigDecimal BigInteger
+                            EventHandler})
 
 (def children-properties
   (memoize
@@ -218,7 +219,7 @@
                                   arg-type1 (aget (.getParameterTypes ^Method m) 1)
                                   converter (get-converter arg-type1)
                                   prop-name (let [mn (subs (.getName ^Method m) 3)]
-                                              (str (.toLowerCase (subs mn 0 1)) (subs mn 1)))]
+                                              (util/camel->kabob (str (.toLowerCase (subs mn 0 1)) (subs mn 1))))]
                             :when converter]
                         `[~prop-name
                           (~(symbol (.getName tp)
@@ -259,36 +260,16 @@
         (eval form)))))
 
 
-(def ^:dynamic *handler-atom*)
+(def ^:dynamic *handler-fn*)
 
 (defn create-event-handler [{:keys [include event-properties] :as template}]
-  (let [handler-atom *handler-atom*
-        id-map       *id-map*]
+  (println "HANDLER " template)
+  (let [handler-fn *handler-fn*]
     (reify EventHandler
       (handle [this event]
-        (let [getter        (get-getter (class event))
-              target        (getter event :target)
-              target-getter (get-getter (class target))
-              ^Scene scene  (target-getter target :scene)
-              msg           (reduce
-                              (fn [acc include]
-                                (if (vector? include)
-                                  (let [[id & properties] include
-                                        value (reduce
-                                                (fn [nd k]
-                                                  ((get-getter (class nd)) nd k))
-                                                (.get ^WeakHashMap id-map id)
-                                                properties)]
-                                    (assoc acc include value))
-                                  (assoc acc include (getter event include))))
-                              template
-                              include)
-              msg           (reduce
-                              (fn [acc prop]
-                                (assoc acc prop (getter event prop)))
-                              msg
-                              event-properties)]
-          (future (@handler-atom msg)))))))
+        (future
+          (println "FIRIGN")
+          (handler-fn template))))))
 
 
 (def get-builder-build-fn

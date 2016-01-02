@@ -2,7 +2,8 @@
   (:require [fn-fx.fx-dom :as dom]
             [fn-fx.diff :refer [component defui render should-update?]]
             [fn-fx.render :refer [get-getter ui]]
-            [clojure.test :refer :all])
+            [clojure.test :refer :all]
+            [fn-fx.util :as util])
   (:import (javafx.scene.layout GridPane)))
 
 (defn get-prop [comp k]
@@ -77,10 +78,10 @@
                             :root (ui :grid-pane
                                       :children [(ui :text
                                                      :text "Welcome"
-                                                     :grid-pane/columnIndex 0
-                                                     :grid-pane/rowIndex 0
-                                                     :grid-pane/columnSpan 2
-                                                     :grid-pane/rowSpan 1)]
+                                                     :grid-pane/column-index 0
+                                                     :grid-pane/row-index 0
+                                                     :grid-pane/column-span 2
+                                                     :grid-pane/row-span 1)]
                                       )))
         {:keys [root] :as app} (dom/app spec)]
     (is root)
@@ -129,6 +130,18 @@
 
   )
 
+
+(deftest callback-test
+  (let [events (atom [])
+        {:keys [root] :as prev} (dom/app (ui :button :text "Foo" :on-action {:event :click})
+                                         (fn [evt]
+                                           (swap! events conj evt)))]
+    (util/run-and-wait
+      (.fire root))
+    (Thread/sleep 100)
+
+    (is (= @events
+           [{:event :click}]))))
 
 
 

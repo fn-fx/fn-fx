@@ -6,16 +6,18 @@
 
 
 
-(deftype FXDom []
+(deftype FXDom [handler-fn]
   IDom
   (create-component! [this type spec]
     (run-and-wait
-      (render/create-component type spec)))
+      (binding [render/*handler-fn* handler-fn]
+        (render/create-component type spec))))
 
   (set-property! [this node property value]
     (let [setter (render/get-setter (type node))]
       (run-and-wait
-        (setter node property value))))
+        (binding [render/*handler-fn* handler-fn]
+          (setter node property value)))))
 
   (set-child! [this parent k child]
     (let [setter (render/get-setter (type parent))]
@@ -40,16 +42,22 @@
 
 
 
-(defrecord App [prev-state dom root])
+(defrecord App [prev-state dom root handler-fn])
 
-(defn app [init-state]
-  (let [dom (->FXDom)
-        root (:node (diff dom nil init-state))]
+(defn default-handler-fn [data]
+  (println "Unhandled event " data))
 
-    (->App init-state dom root)))
+(defn app
+  ([init-state]
+    (app init-state default-handler-fn))
+  ([init-state default-handler-fn]
+   (let [dom  (->FXDom default-handler-fn)
+         root (:node (diff dom nil init-state))]
 
-(defn update-app [{:keys [prev-state dom root]} new-state]
+     (->App init-state dom root default-handler-fn))))
+
+(defn update-app [{:keys [prev-state dom root handler-fn]} new-state]
   (let [new-node (:node (time (diff dom prev-state new-state)))]
-    (->App new-state dom new-node)))
+    (->App new-state dom new-node handler-fn)))
 
 
