@@ -12,12 +12,12 @@
 
 (set! *warn-on-reflection* false)
 
-(JFXPanel. )
+(JFXPanel.)
 
 (def constructors (atom {}))
 (def types (atom {}))
 
-(def ^:dynamic *log* false)
+(def ^:dynamic *log* true)
 
 (defn log [form]
   (when *log*
@@ -68,6 +68,7 @@
   javafx.scene.text.Font
   javafx.scene.text.Text
   javafx.geometry.Insets
+  javafx.scene.Parent
   javafx.scene.control.Separator
   javafx.scene.shape.Rectangle
   javafx.scene.control.SplitPane
@@ -134,18 +135,19 @@
   (assert (not (empty? (.getConstructors tp))) (str "There is no public constructor for: " tp))
   (let [smallest (apply min-key (memfn getParameterCount) (.getConstructors tp))
         ctor (symbol (.getName smallest))
-        params (into {} (map-indexed (fn [idx anns]
-                                       (let [ann (first (filter
-                                                          (fn [ann] (= javafx.beans.NamedArg (.annotationType ann)))
-                                                          anns))]
-                                         [idx (keyword (.value ann))]))
-                                     (.getParameterAnnotations smallest)))
-        _ (println params)
+        args (into {} (map-indexed (fn [idx anns]
+                                     (let [ann (first (filter
+                                                        (fn [ann] (= javafx.beans.NamedArg (.annotationType ann)))
+                                                        anns))]
+                                       [idx (keyword (.value ann))]))
+                                   (.getParameterAnnotations smallest)))
+        arg-symbols (map (comp symbol name) (vals args))
+        arg-converters (map get-converter (apply vector (.getParameterTypes ^java.lang.reflect.Constructor smallest)))
         form `(fn [template#]
-                (let [{:keys [~@(map (comp symbol name) (vals params))]} template#]
-                  (assert (every? #(not (nil? %)) (vector ~@(map (comp symbol name) (vals params))))
+                (let [{:keys [~@arg-symbols]} template#]
+                  (assert (every? #(not (nil? %)) (vector ~@arg-symbols))
                           "A required parameter is missing from the provided template.")
-                  (new ~ctor ~@(map (comp symbol name) (vals params)))))]
+                  (new ~ctor ~@(map (fn [c s] `(~c ~s)) arg-converters arg-symbols))))]
     (log form)
     (eval form)))
 
@@ -156,9 +158,7 @@
             _ (assert ctor (str "No constructor for " nm))]
         ctor))))
 
-
 (def ^:dynamic *id-map*)
-
 
 (def get-setter
   (memoize
@@ -208,12 +208,12 @@
                                             (str (.toLowerCase (subs mn 0 1)) (subs mn 1)))]
                           :when converter]
                       `[~prop-name
-                        ( ~(symbol (.getName tp)
-                                    (.getName ^Method m))
-                           ~(with-meta child-sym
-                                       {:tag arg-type0})
-                           ~(with-meta `(~converter ~val-sym)
-                                       {:tag arg-type1}))])
+                        (~(symbol (.getName tp)
+                                  (.getName ^Method m))
+                          ~(with-meta child-sym
+                                      {:tag arg-type0})
+                          ~(with-meta `(~converter ~val-sym)
+                                      {:tag arg-type1}))])
 
             form `(fn [~child-sym property# ~val-sym]
                     (case (name property#)
