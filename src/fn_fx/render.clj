@@ -2,11 +2,12 @@
   (:import (javafx.embed.swing JFXPanel)
            (javafx.scene Scene)
            (javafx.stage Stage)
-           (java.lang.reflect Method Modifier)
+           (java.lang.reflect Method Modifier Constructor)
            (javafx.collections ObservableList)
            (javafx.event EventHandler)
            (javafx.collections FXCollections)
-           (java.util WeakHashMap))
+           (java.util WeakHashMap)
+           (javafx.beans NamedArg))
   (:require [fn-fx.util :as util]
             [fn-fx.diff :as diff]))
 
@@ -94,11 +95,13 @@
   (memoize (fn [^Class to-tp]
              (if (.isEnum to-tp)
                `(get-enum-converter ~to-tp)
-               (first (keep (fn [[^Class klass converter]]
+               (if-let [converter (first (keep (fn [[^Class klass converter]]
 
-                              (when (.isAssignableFrom to-tp klass)
-                                converter))
-                            @converter-code))))))
+                                                 (when (.isAssignableFrom to-tp klass)
+                                                   converter))
+                                               @converter-code))]
+                 converter
+                 `identity)))))
 
 (defn find-getters
   [tp]
@@ -124,37 +127,54 @@
     {:prop   (apply str (Character/toLowerCase ^Character (first prop-name)) (rest prop-name))
      :setter {:name mn :param-type (.getName ptype)}}))
 
-; TODO: Make sure you're always feeding the arguments from the spec to the constructor in the right order.
-; TODO: Hook this up with the main fn-fx stuff, in place of builders.
-; TODO: Make sure all args to constructors pass through conversion.
-; TODO: Probably needs something to handle constructor var-args too (see KeyFrame for an example of what I mean)
-(defn constructor
-  [tp]
-  (assert (not= nil tp) "The template provided to the constructor must not be nil.")
+(defn ctor-param-names
+  [ctor]
+  (map (fn [anns]
+         (if-let [ann (first (filter
+                            (fn [ann] (= NamedArg (.annotationType ann)))
+                            anns))]
+           (keyword (.value ann))))
+       (.getParameterAnnotations ctor)))
 
-  (assert (not (empty? (.getConstructors tp))) (str "There is no public constructor for: " tp))
-  (let [smallest (apply min-key (memfn getParameterCount) (.getConstructors tp))
-        ctor (symbol (.getName smallest))
-        args (into {} (map-indexed (fn [idx anns]
-                                     (let [ann (first (filter
-                                                        (fn [ann] (= javafx.beans.NamedArg (.annotationType ann)))
-                                                        anns))]
-                                       [idx (keyword (.value ann))]))
-                                   (.getParameterAnnotations smallest)))
-        arg-symbols (map (comp symbol name) (vals args))
-        arg-converters (map get-converter (apply vector (.getParameterTypes ^java.lang.reflect.Constructor smallest)))
-        form `(fn [template#]
-                (let [{:keys [~@arg-symbols]} template#]
-                  (assert (every? #(not (nil? %)) (vector ~@arg-symbols))
-                          "A required parameter is missing from the provided template.")
-                  (new ~ctor ~@(map (fn [c s] `(~c ~s)) arg-converters arg-symbols))))]
+(defn properly-annotated?
+  [ctor]
+  (some (fn [anns]
+          (some (fn [ann] (= NamedArg (.annotationType ann))) anns))
+        (.getParameterAnnotations ctor)))
+
+(defn annotated-constructors
+  [tp]
+  (into [] (map (juxt (comp set ctor-param-names) identity)) (filter (fn [ctor]
+                                                                       (or
+                                                                         (properly-annotated? ctor)
+                                                                         (zero? (.getParameterCount ctor))))
+                                                                     (.getConstructors tp))))
+
+; TODO: Probably needs something to handle constructor var-args too (see KeyFrame for an example of what I mean)
+(defn get-constructor [tp]
+  (let [template-sym (gensym "template")
+        ctors (sort-by (fn [[params _]] (count params)) > (annotated-constructors tp))
+        clauses (for [ctor ctors] `(clojure.set/subset? ~(first ctor) ~template-sym))
+        exprs (for [ctor ctors] (let [ctor (second ctor)
+                                      ctor-symbol (symbol (.getName ctor))
+                                      args (ctor-param-names ctor)
+                                      arg-lookups (for [arg args] `(~arg ~template-sym))
+                                      arg-converters (map get-converter (apply vector (.getParameterTypes ^Constructor ctor)))
+                                      form `(new ~ctor-symbol ~@(map (fn [c s] (list c s)) arg-converters arg-lookups))]
+                                  form))
+        cond-body (interleave clauses exprs)
+        else-body `(:else "No valid constructor for the template provided!")
+        form `(fn [~template-sym]
+                (cond
+                  ~@cond-body
+                  ~@else-body))]
     (log form)
     (eval form)))
 
 (def get-ctor
   (memoize
     (fn [nm]
-      (let [ctor (constructor (@constructors nm))
+      (let [ctor (get-constructor (@constructors nm))
             _ (assert ctor (str "No constructor for " nm))]
         ctor))))
 
