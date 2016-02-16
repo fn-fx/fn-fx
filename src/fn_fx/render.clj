@@ -6,7 +6,7 @@
            (javafx.collections ObservableList)
            (javafx.event EventHandler)
            (javafx.collections FXCollections)
-           (java.util WeakHashMap)
+           (java.util WeakHashMap List)
            (javafx.beans NamedArg))
   (:require [fn-fx.util :as util]
             [fn-fx.diff :as diff]))
@@ -103,36 +103,12 @@
                  converter
                  `identity)))))
 
-(defn find-getters
-  [tp]
-  (for [m (.getMethods tp)
-        :let [mn (.getName m)]
-        :when (= 0 (.getParameterCount m))
-        :when (or (.startsWith mn "is") (.startsWith mn "get"))
-        :let [prop-name (cond
-                          (.startsWith mn "is") (.substring mn 2)
-                          (.startsWith mn "get") (.substring mn 3))]]
-    {:prop   (apply str (Character/toLowerCase ^Character (first prop-name)) (rest prop-name))
-     :getter {:name mn :ret-type (.getName (.getReturnType ^Method m))}}))
-
-(defn find-setters
-  [tp]
-  (for [m (.getMethods tp)
-        :when (= 1 (.getParameterCount m))
-        :let [mn (.getName m)]
-        :when (.startsWith mn "set")
-        :when (= Void/TYPE (.getReturnType m))
-        :let [prop-name (.substring mn 3)
-              ptype (aget (.getParameterTypes m) 0)]]
-    {:prop   (apply str (Character/toLowerCase ^Character (first prop-name)) (rest prop-name))
-     :setter {:name mn :param-type (.getName ptype)}}))
-
 (defn ctor-param-names
   [ctor]
   (map (fn [anns]
          (if-let [ann (first (filter
-                            (fn [ann] (= NamedArg (.annotationType ann)))
-                            anns))]
+                               (fn [ann] (= NamedArg (.annotationType ann)))
+                               anns))]
            (keyword (.value ann))))
        (.getParameterAnnotations ctor)))
 
@@ -188,9 +164,23 @@
             obj-sym (with-meta (gensym "obj")
                                {:tag (symbol (.getName tp))})
             val-sym (gensym "val")
+            strange-clauses (for [m (.getMethods tp)
+                                  :when (and
+                                          (.startsWith (.getName ^Method m) "get")
+                                          (= (.getParameterCount ^Method m) 0)
+                                          (= ObservableList (.getReturnType ^Method m)))
+                                  :let [arg-type (.getReturnType ^Method m)]
+                                  :let [converter (get-converter arg-type)]
+                                  :let [prop-name (let [mn (subs (.getName ^Method m) 3)]
+                                                    (str (.toLowerCase (subs mn 0 1)) (subs mn 1)))]]
+                              `[~(keyword prop-name)
+                                (.
+                                  (. ~obj-sym ~(symbol (.getName ^Method m)))
+                                  ~(symbol "addAll") (~converter ~val-sym))])
             clauses (for [m (.getMethods tp)
-                          :when (= (.getParameterCount ^Method m) 1)
-                          :when (.startsWith (.getName ^Method m) "set")
+                          :when (and
+                                  (.startsWith (.getName ^Method m) "set")
+                                  (= (.getParameterCount ^Method m) 1))
                           :let [arg-type (aget (.getParameterTypes ^Method m) 0)]
                           :let [converter (get-converter arg-type)]
                           :let [prop-name (let [mn (subs (.getName ^Method m) 3)]
@@ -205,6 +195,7 @@
             form `(fn [~obj-sym property# ~val-sym]
                     (case property#
                       ~@(apply concat clauses)
+                      ~@(apply concat strange-clauses)
                       (println "Unknown property" property# " on " ~tp)))]
 
         (log form)
@@ -354,12 +345,12 @@
 (extend-protocol IRunUpdate
   fn_fx.diff.ListDelete
   (-run-indexed-update [_ lst idx control]
-    (.remove ^java.util.List lst (int idx))))
+    (.remove ^List lst (int idx))))
 
 (extend-type fn_fx.diff.Create
   IRunUpdate
   (-run-indexed-update [{:keys [template]} lst idx control]
-    (.add ^java.util.List lst (int idx) (create-component template))
+    (.add ^List lst (int idx) (create-component template))
     nil))
 
 
@@ -367,7 +358,7 @@
   fn_fx.diff.ListChild
   (-run-update [{:keys [property-name updates]} control]
     (let [f (get-getter (type control))
-          ^java.util.List child-list (f control property-name)]
+          ^List child-list (f control property-name)]
       (reduce
         (fn [_ [idx commands]]
           (if (set? commands)
