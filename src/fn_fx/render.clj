@@ -136,7 +136,8 @@
                                       args (ctor-param-names ctor)
                                       arg-lookups (for [arg args] `(~arg ~template-sym))
                                       arg-converters (map get-converter (apply vector (.getParameterTypes ^Constructor ctor)))
-                                      form `(new ~ctor-symbol ~@(map (fn [c s] (list c s)) arg-converters arg-lookups))]
+                                      form `{:ctor-params (vector ~@args)
+                                             :object      (new ~ctor-symbol ~@(map (fn [c s] (list c s)) arg-converters arg-lookups))}]
                                   form))
         cond-body (interleave clauses exprs)
         else-body `(:else "No valid constructor for the template provided!")
@@ -164,31 +165,31 @@
             obj-sym (with-meta (gensym "obj")
                                {:tag (symbol (.getName tp))})
             val-sym (gensym "val")
-            strange-clauses (for [m (.getMethods tp)
+            strange-clauses (for [^Method m (.getMethods tp)
                                   :when (and
-                                          (.startsWith (.getName ^Method m) "get")
-                                          (= (.getParameterCount ^Method m) 0)
-                                          (= ObservableList (.getReturnType ^Method m)))
-                                  :let [arg-type (.getReturnType ^Method m)]
+                                          (.startsWith (.getName m) "get")
+                                          (= (.getParameterCount m) 0)
+                                          (= ObservableList (.getReturnType m)))
+                                  :let [arg-type (.getReturnType m)]
                                   :let [converter (get-converter arg-type)]
-                                  :let [prop-name (let [mn (subs (.getName ^Method m) 3)]
+                                  :let [prop-name (let [mn (subs (.getName m) 3)]
                                                     (str (.toLowerCase (subs mn 0 1)) (subs mn 1)))]]
                               `[~(keyword prop-name)
                                 (.
-                                  (. ~obj-sym ~(symbol (.getName ^Method m)))
+                                  (. ~obj-sym ~(symbol (.getName m)))
                                   ~(symbol "addAll") (~converter ~val-sym))])
-            clauses (for [m (.getMethods tp)
+            clauses (for [^Method m (.getMethods tp)
                           :when (and
-                                  (.startsWith (.getName ^Method m) "set")
-                                  (= (.getParameterCount ^Method m) 1))
-                          :let [arg-type (aget (.getParameterTypes ^Method m) 0)]
+                                  (.startsWith (.getName m) "set")
+                                  (= (.getParameterCount m) 1))
+                          :let [arg-type (aget (.getParameterTypes m) 0)]
                           :let [converter (get-converter arg-type)]
-                          :let [prop-name (let [mn (subs (.getName ^Method m) 3)]
+                          :let [prop-name (let [mn (subs (.getName m) 3)]
                                             (str (.toLowerCase (subs mn 0 1)) (subs mn 1)))]
                           :when converter]
                       `[~(keyword prop-name)
                         (. ~obj-sym
-                           ~(symbol (.getName ^Method m))
+                           ~(symbol (.getName m))
                            ~(with-meta `(~converter ~val-sym)
                                        {:tag arg-type}))])
 
@@ -294,7 +295,9 @@
 
 (defn create-component [component]
   (let [ctor (get-ctor (:type component))
-        instance (ctor component)
+        ctor-result (ctor component)
+        instance (:object ctor-result)
+        ctor-params (:ctor-params ctor-result)
         setter (get-setter (type instance))]
     (reduce-kv
       (fn [_ k v]
@@ -302,7 +305,7 @@
                    (not (namespace k)))
           (setter instance k v)))
       nil
-      component)
+      (apply dissoc component ctor-params))
     (reduce-kv
       (fn [_ k v]
         (when (and (not (ignore-properties k))
