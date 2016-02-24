@@ -126,6 +126,35 @@
                                                                          (zero? (.getParameterCount ctor))))
                                                                      (.getConstructors tp))))
 
+(defn find-getters
+  [tp]
+  (into {} (for [m (.getMethods tp)
+                 :let [mn (.getName m)]
+                 :when (= 0 (.getParameterCount m))
+                 :when (or (.startsWith mn "is") (.startsWith mn "get"))
+                 :let [prop-name (cond
+                                   (.startsWith mn "is") (.substring mn 2)
+                                   (.startsWith mn "get") (.substring mn 3))]]
+             [(keyword (apply str (Character/toLowerCase ^Character (first prop-name)) (rest prop-name)))
+              {:getter {:method m :name mn :ret-type (.getName (.getReturnType ^Method m))}}])))
+
+(defn find-setters
+  [tp]
+  (into {} (for [m (.getMethods tp)
+                 :when (= 1 (.getParameterCount m))
+                 :let [mn (.getName m)]
+                 :when (.startsWith mn "set")
+                 :when (= Void/TYPE (.getReturnType m))
+                 :let [prop-name (.substring mn 3)
+                       ptype (aget (.getParameterTypes m) 0)]]
+             [(keyword (apply str (Character/toLowerCase ^Character (first prop-name)) (rest prop-name)))
+              {:setter {:method m :name mn :param-type (.getName ptype)}}])))
+
+(defn get-properties
+  [tp]
+  (let [setters-and-getters (merge-with merge (find-setters tp) (find-getters tp))]
+    setters-and-getters))
+
 ; TODO: Probably needs something to handle constructor var-args too (see KeyFrame for an example of what I mean)
 (defn get-constructor [tp]
   (let [template-sym (gensym "template")
