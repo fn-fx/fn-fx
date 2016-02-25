@@ -7,5 +7,4 @@
                  [org.clojure/core.memoize "0.5.6"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]]
   :profiles {:dev {:source-paths ["src" "examples"]
-                   :dependencies [[org.clojure/core.match "0.3.0-alpha4"]
-                                  [fipp "0.6.3" :exclusions [org.clojure/clojure]]]}})
+                   :dependencies [[org.clojure/core.match "0.3.0-alpha4"]]}})
