@@ -6,7 +6,7 @@
            (javafx.collections ObservableList)
            (javafx.event EventHandler)
            (javafx.collections FXCollections)
-           (java.util WeakHashMap List)
+           (java.util WeakHashMap List Collection)
            (javafx.beans NamedArg))
   (:require [fn-fx.util :as util]
             [fn-fx.diff :as diff]))
@@ -18,7 +18,7 @@
 (def constructors (atom {}))
 (def types (atom {}))
 
-(def ^:dynamic *log* true)
+(def ^:dynamic *log* false)
 
 (defn log [form]
   (when *log*
@@ -125,7 +125,6 @@
                                                                          (properly-annotated? ctor)
                                                                          (zero? (.getParameterCount ctor))))
                                                                      (.getConstructors tp))))
-
 (defn find-getters
   [tp]
   (into {} (for [m (.getMethods tp)
@@ -136,7 +135,7 @@
                                    (.startsWith mn "is") (.substring mn 2)
                                    (.startsWith mn "get") (.substring mn 3))]]
              [(keyword (apply str (Character/toLowerCase ^Character (first prop-name)) (rest prop-name)))
-              {:getter {:method m :name mn :ret-type (.getName (.getReturnType ^Method m))}}])))
+              {:getter {:method m :name mn :ret-type (.getReturnType ^Method m)}}])))
 
 (defn find-setters
   [tp]
@@ -148,7 +147,7 @@
                  :let [prop-name (.substring mn 3)
                        ptype (aget (.getParameterTypes m) 0)]]
              [(keyword (apply str (Character/toLowerCase ^Character (first prop-name)) (rest prop-name)))
-              {:setter {:method m :name mn :param-type (.getName ptype)}}])))
+              {:setter {:method m :name mn :param-type ptype}}])))
 
 (defn get-properties
   [tp]
@@ -194,38 +193,30 @@
             obj-sym (with-meta (gensym "obj")
                                {:tag (symbol (.getName tp))})
             val-sym (gensym "val")
-            strange-clauses (for [^Method m (.getMethods tp)
-                                  :when (and
-                                          (.startsWith (.getName m) "get")
-                                          (= (.getParameterCount m) 0)
-                                          (= ObservableList (.getReturnType m)))
-                                  :let [arg-type (.getReturnType m)]
-                                  :let [converter (get-converter arg-type)]
-                                  :let [prop-name (let [mn (subs (.getName m) 3)]
-                                                    (str (.toLowerCase (subs mn 0 1)) (subs mn 1)))]]
-                              `[~(keyword prop-name)
-                                (.
-                                  (. ~obj-sym ~(symbol (.getName m)))
-                                  ~(symbol "addAll") (~converter ~val-sym))])
-            clauses (for [^Method m (.getMethods tp)
-                          :when (and
-                                  (.startsWith (.getName m) "set")
-                                  (= (.getParameterCount m) 1))
-                          :let [arg-type (aget (.getParameterTypes m) 0)]
-                          :let [converter (get-converter arg-type)]
-                          :let [prop-name (let [mn (subs (.getName m) 3)]
-                                            (str (.toLowerCase (subs mn 0 1)) (subs mn 1)))]
-                          :when converter]
-                      `[~(keyword prop-name)
-                        (. ~obj-sym
-                           ~(symbol (.getName m))
-                           ~(with-meta `(~converter ~val-sym)
-                                       {:tag arg-type}))])
-
+            clauses (remove nil?
+                            (for [[prop-name prop-info] (get-properties tp)]
+                              (cond
+                                (contains? prop-info :setter)
+                                (let [setter (get-in prop-info [:setter :method])
+                                      arg-type (aget (.getParameterTypes setter) 0)
+                                      converter (get-converter arg-type)]
+                                  `[~prop-name
+                                    (. ~obj-sym
+                                       ~(symbol (.getName setter))
+                                       ~(with-meta `(~converter ~val-sym)
+                                                   {:tag arg-type}))])
+                                (and (contains? prop-info :getter)
+                                     (isa? (get-in prop-info [:getter :ret-type]) Collection))
+                                (let [getter (get-in prop-info [:getter :method])
+                                      arg-type (.getReturnType getter)
+                                      converter (get-converter arg-type)]
+                                  `[~prop-name
+                                    (.
+                                      (. ~obj-sym ~(symbol (.getName getter)))
+                                      ~(symbol "addAll") (~converter ~val-sym))]))))
             form `(fn [~obj-sym property# ~val-sym]
                     (case property#
                       ~@(apply concat clauses)
-                      ~@(apply concat strange-clauses)
                       (println "Unknown property" property# " on " ~tp)))]
 
         (log form)
@@ -318,7 +309,7 @@
           (future (@handler-atom msg)))))))
 
 (defn convert-observable-list [itms]
-  (FXCollections/observableArrayList ^java.util.Collection (mapv create-component itms)))
+  (FXCollections/observableArrayList ^Collection (mapv create-component itms)))
 
 (def ignore-properties #{:type :fn-fx/children :fn-fx/id})
 
