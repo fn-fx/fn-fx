@@ -9,7 +9,8 @@
            (java.util WeakHashMap List Collection)
            (javafx.beans NamedArg))
   (:require [fn-fx.util :as util]
-            [fn-fx.diff :as diff]))
+            [fn-fx.diff :as diff]
+            [clojure.set]))
 
 (set! *warn-on-reflection* false)
 
@@ -74,7 +75,10 @@
   javafx.scene.shape.Rectangle
   javafx.scene.control.SplitPane
   javafx.scene.layout.BorderPane
-  javafx.scene.text.TextFlow)
+  javafx.scene.text.TextFlow
+  javafx.scene.control.ScrollPane
+  javafx.scene.layout.Pane
+  javafx.scene.control.SelectionModel)
 
 (def get-enum-converter
   (memoize (fn [^Class to-tp]
