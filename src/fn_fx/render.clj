@@ -21,6 +21,7 @@
 (def types (atom {}))
 
 (def ^:dynamic *log* false)
+(def ^:dynamic *id-map*)
 
 (defn log [form]
   (when *log*
@@ -161,36 +162,31 @@
   [tp]
   (merge-with merge (find-setters tp) (find-getters tp)))
 
-(defn get-constructor [tp]
-  (let [template-sym (gensym "template")
-        ctors (sort-by (fn [[params _]] (count params)) > (annotated-constructors tp))
-        clauses (for [ctor ctors] `(clojure.set/subset? ~(first ctor) ~template-sym))
-        exprs (for [ctor ctors] (let [^Constructor ctor (second ctor)
-                                      ctor-symbol (symbol (.getName ctor))
-                                      args (ctor-param-names ctor)
-                                      arg-lookups (for [arg args] `(~arg ~template-sym))
-                                      arg-converters (map get-converter (apply vector (.getParameterTypes ^Constructor ctor)))
-                                      form `{:ctor-params (vector ~@args)
-                                             :object      (new ~ctor-symbol ~@(map (fn [c s] (list c s)) arg-converters arg-lookups))}]
-                                  form))
-        cond-body (interleave clauses exprs)
-        else-body `(:else "No valid constructor for the template provided!")
-
-        form `(fn [~template-sym]
-                (cond
-                  ~@cond-body
-                  ~@else-body))]
-    (log form)
-    (eval form)))
-
-(def get-ctor
+(def get-constructor
   (memoize
     (fn [nm]
-      (let [ctor (get-constructor (@constructors nm))
-            _ (assert ctor (str "No constructor for " nm))]
-        ctor))))
+      (let [tp (@constructors nm)
+            _ (assert tp (str "No constructor for " nm))
+            template-sym (gensym "template")
+            ctors (sort-by (fn [[params _]] (count params)) > (annotated-constructors tp))
+            clauses (for [ctor ctors] `(clojure.set/subset? ~(first ctor) ~template-sym))
+            exprs (for [ctor ctors] (let [^Constructor ctor (second ctor)
+                                          ctor-symbol (symbol (.getName ctor))
+                                          args (ctor-param-names ctor)
+                                          arg-lookups (for [arg args] `(~arg ~template-sym))
+                                          arg-converters (map get-converter (apply vector (.getParameterTypes ^Constructor ctor)))
+                                          form `{:ctor-params (vector ~@args)
+                                                 :object      (new ~ctor-symbol ~@(map (fn [c s] (list c s)) arg-converters arg-lookups))}]
+                                      form))
+            cond-body (interleave clauses exprs)
+            else-body `(:else "No valid constructor for the template provided!")
 
-(def ^:dynamic *id-map*)
+            form `(fn [~template-sym]
+                    (cond
+                      ~@cond-body
+                      ~@else-body))]
+        (log form)
+        (eval form)))))
 
 (def get-setter
   (memoize
@@ -321,7 +317,7 @@
 (def ignore-properties #{:type :fn-fx/children :fn-fx/id})
 
 (defn create-component [component]
-  (let [ctor (get-ctor (:type component))
+  (let [ctor (get-constructor (:type component))
         ctor-result (ctor component)
         instance (:object ctor-result)
         ctor-params (:ctor-params ctor-result)
