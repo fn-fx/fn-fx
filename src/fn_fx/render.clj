@@ -7,12 +7,13 @@
            (javafx.event EventHandler)
            (javafx.collections FXCollections)
            (java.util WeakHashMap List Collection)
-           (javafx.beans NamedArg))
+           (javafx.beans NamedArg)
+           (java.lang.annotation Annotation))
   (:require [fn-fx.util :as util]
             [fn-fx.diff :as diff]
             [clojure.set]))
 
-(set! *warn-on-reflection* false)
+(set! *warn-on-reflection* true)
 
 (JFXPanel.)
 
@@ -30,12 +31,12 @@
 (declare create-event-handler)
 
 (def converter-code (atom (partition-all 2 [Integer/TYPE `int
-                                            java.lang.Integer `int
+                                            Integer `int
                                             Double/TYPE `double
-                                            java.lang.Double `double
+                                            Double `double
                                             Boolean/TYPE `boolean
-                                            java.lang.Boolean `boolean
-                                            java.lang.String `str
+                                            Boolean `boolean
+                                            String `str
                                             EventHandler `create-event-handler
                                             ObservableList `convert-observable-list])))
 
@@ -100,7 +101,6 @@
              (if (.isEnum to-tp)
                `(get-enum-converter ~to-tp)
                (if-let [converter (first (keep (fn [[^Class klass converter]]
-
                                                  (when (.isAssignableFrom to-tp klass)
                                                    converter))
                                                @converter-code))]
@@ -108,31 +108,32 @@
                  `identity)))))
 
 (defn ctor-param-names
-  [ctor]
+  [^Constructor ctor]
   (map (fn [anns]
-         (if-let [ann (first (filter
-                               (fn [ann] (= NamedArg (.annotationType ann)))
-                               anns))]
+         (if-let [^NamedArg ann (first
+                                  (filter
+                                    (fn [^Annotation ann] (= NamedArg (.annotationType ann)))
+                                    anns))]
            (keyword (.value ann))))
        (.getParameterAnnotations ctor)))
 
 (defn properly-annotated?
-  [ctor]
+  [^Constructor ctor]
   (some (fn [anns]
-          (some (fn [ann] (= NamedArg (.annotationType ann))) anns))
+          (some (fn [^Annotation ann] (= NamedArg (.annotationType ann))) anns))
         (.getParameterAnnotations ctor)))
 
 (defn annotated-constructors
-  [tp]
-  (into [] (map (juxt (comp set ctor-param-names) identity)) (filter (fn [ctor]
+  [^Class tp]
+  (into [] (map (juxt (comp set ctor-param-names) identity)) (filter (fn [^Constructor ctor]
                                                                        (or
                                                                          (properly-annotated? ctor)
                                                                          (zero? (.getParameterCount ctor))))
                                                                      (.getConstructors tp))))
 (defn find-getters
-  [tp]
-  (into {} (for [m (.getMethods tp)
-                 :let [mn (.getName m)]
+  [^Class tp]
+  (into {} (for [^Method m (.getMethods tp)
+                 :let [^String mn (.getName m)]
                  :when (= 0 (.getParameterCount m))
                  :when (or (.startsWith mn "is") (.startsWith mn "get"))
                  :let [prop-name (cond
@@ -142,10 +143,10 @@
               {:getter {:method m :name mn :ret-type (.getReturnType ^Method m)}}])))
 
 (defn find-setters
-  [tp]
-  (into {} (for [m (.getMethods tp)
+  [^Class tp]
+  (into {} (for [^Method m (.getMethods tp)
                  :when (= 1 (.getParameterCount m))
-                 :let [mn (.getName m)]
+                 :let [^String mn (.getName m)]
                  :when (.startsWith mn "set")
                  :when (= Void/TYPE (.getReturnType m))
                  :let [prop-name (.substring mn 3)
@@ -158,12 +159,11 @@
   (let [setters-and-getters (merge-with merge (find-setters tp) (find-getters tp))]
     setters-and-getters))
 
-; TODO: Probably needs something to handle constructor var-args too (see KeyFrame for an example of what I mean)
 (defn get-constructor [tp]
   (let [template-sym (gensym "template")
         ctors (sort-by (fn [[params _]] (count params)) > (annotated-constructors tp))
         clauses (for [ctor ctors] `(clojure.set/subset? ~(first ctor) ~template-sym))
-        exprs (for [ctor ctors] (let [ctor (second ctor)
+        exprs (for [ctor ctors] (let [^Constructor ctor (second ctor)
                                       ctor-symbol (symbol (.getName ctor))
                                       args (ctor-param-names ctor)
                                       arg-lookups (for [arg args] `(~arg ~template-sym))
@@ -201,7 +201,7 @@
                             (for [[prop-name prop-info] (get-properties tp)]
                               (cond
                                 (contains? prop-info :setter)
-                                (let [setter (get-in prop-info [:setter :method])
+                                (let [^Method setter (get-in prop-info [:setter :method])
                                       arg-type (aget (.getParameterTypes setter) 0)
                                       converter (get-converter arg-type)]
                                   `[~prop-name
@@ -211,7 +211,7 @@
                                                    {:tag arg-type}))])
                                 (and (contains? prop-info :getter)
                                      (isa? (get-in prop-info [:getter :ret-type]) Collection))
-                                (let [getter (get-in prop-info [:getter :method])
+                                (let [^Method getter (get-in prop-info [:getter :method])
                                       arg-type (.getReturnType getter)
                                       converter (get-converter arg-type)]
                                   `[~prop-name
@@ -425,8 +425,7 @@
     (diff/diff @state new-state))
   (update! [this new-state]
     (locking this
-      (let [changes (time (diff this new-state))
-            _ (println changes)]
+      (let [changes (time (diff this new-state))]
         (vreset! state new-state)
         (log changes)
         (util/run-later
