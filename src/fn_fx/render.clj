@@ -125,11 +125,14 @@
 
 (defn annotated-constructors
   [^Class tp]
-  (into [] (map (juxt (comp set ctor-param-names) identity)) (filter (fn [^Constructor ctor]
-                                                                       (or
-                                                                         (properly-annotated? ctor)
-                                                                         (zero? (.getParameterCount ctor))))
-                                                                     (.getConstructors tp))))
+  (into []
+        (map (juxt (comp set ctor-param-names) identity))
+        (filter (fn [^Constructor ctor]
+                  (or
+                    (properly-annotated? ctor)
+                    (zero? (.getParameterCount ctor))))
+                (.getConstructors tp))))
+
 (defn find-getters
   [^Class tp]
   (into {} (for [^Method m (.getMethods tp)
@@ -139,8 +142,8 @@
                  :let [prop-name (cond
                                    (.startsWith mn "is") (.substring mn 2)
                                    (.startsWith mn "get") (.substring mn 3))]]
-             [(keyword (apply str (Character/toLowerCase ^Character (first prop-name)) (rest prop-name)))
-              {:getter {:method m :name mn :ret-type (.getReturnType ^Method m)}}])))
+             (vector (keyword (apply str (Character/toLowerCase ^Character (first prop-name)) (rest prop-name)))
+                     {:getter {:method m :name mn :ret-type (.getReturnType ^Method m)}}))))
 
 (defn find-setters
   [^Class tp]
@@ -151,13 +154,12 @@
                  :when (= Void/TYPE (.getReturnType m))
                  :let [prop-name (.substring mn 3)
                        ptype (aget (.getParameterTypes m) 0)]]
-             [(keyword (apply str (Character/toLowerCase ^Character (first prop-name)) (rest prop-name)))
-              {:setter {:method m :name mn :param-type ptype}}])))
+             (vector (keyword (apply str (Character/toLowerCase ^Character (first prop-name)) (rest prop-name)))
+                     {:setter {:method m :name mn :param-type ptype}}))))
 
 (defn get-properties
   [tp]
-  (let [setters-and-getters (merge-with merge (find-setters tp) (find-getters tp))]
-    setters-and-getters))
+  (merge-with merge (find-setters tp) (find-getters tp)))
 
 (defn get-constructor [tp]
   (let [template-sym (gensym "template")
@@ -173,6 +175,7 @@
                                   form))
         cond-body (interleave clauses exprs)
         else-body `(:else "No valid constructor for the template provided!")
+
         form `(fn [~template-sym]
                 (cond
                   ~@cond-body
@@ -218,11 +221,11 @@
                                     (.
                                       (. ~obj-sym ~(symbol (.getName getter)))
                                       ~(symbol "addAll") (~converter ~val-sym))]))))
+
             form `(fn [~obj-sym property# ~val-sym]
                     (case property#
                       ~@(apply concat clauses)
                       (println "Unknown property" property# " on " ~tp)))]
-
         (log form)
         (eval form)))))
 
