@@ -17,7 +17,6 @@
 
 (JFXPanel.)
 
-(def constructors (atom {}))
 (def types (atom {}))
 
 (def ^:dynamic *log* false)
@@ -43,15 +42,12 @@
 
 (defmacro import-components [& components]
   `(do ~@(for [component components]
-           (let [builder-name (symbol (str (name component)))
-                 kw-name (->> (.lastIndexOf (name component) ".")
+           (let [kw-name (->> (.lastIndexOf (name component) ".")
                               inc
                               (subs (name component))
-                              keyword)
-                 ]
+                              keyword)]
              `(do (clojure.core/import ~component)
                   (swap! converter-code conj [~component `create-component])
-                  (swap! constructors assoc ~kw-name ~builder-name)
                   (swap! types assoc ~kw-name ~component))))))
 
 (import-components
@@ -164,10 +160,8 @@
 
 (def get-constructor
   (memoize
-    (fn [nm]
-      (let [tp (@constructors nm)
-            _ (assert tp (str "No constructor for " nm))
-            template-sym (gensym "template")
+    (fn [^Class tp]
+      (let [template-sym (gensym "template")
             ctors (sort-by (fn [[params _]] (count params)) > (annotated-constructors tp))
             clauses (for [ctor ctors] `(clojure.set/subset? ~(first ctor) ~template-sym))
             exprs (for [ctor ctors] (let [^Constructor ctor (second ctor)
@@ -317,7 +311,9 @@
 (def ignore-properties #{:type :fn-fx/children :fn-fx/id})
 
 (defn create-component [component]
-  (let [ctor (get-constructor (:type component))
+  (let [tp (get @types (:type component))
+        _ (assert tp (str "Tried to create a component with an unknown type: " (:type component)))
+        ctor (get-constructor tp)
         ctor-result (ctor component)
         instance (:object ctor-result)
         ctor-params (:ctor-params ctor-result)
