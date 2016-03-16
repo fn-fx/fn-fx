@@ -81,7 +81,7 @@
                          :a [{:type :b
                               :prop {:type :foo
                                      :tag 43}}]})]
-      (is (= changes 0)))))
+      (is (= changes #{(->ListChild :a [[0 #{(->SetProperty :prop {:tag 43 :type :foo})}]])})))))
 
 
 

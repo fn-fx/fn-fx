@@ -1,55 +1,52 @@
 (ns fn-fx.render
   (:import (javafx.embed.swing JFXPanel)
-           (javax.swing JFrame)
-           (javafx.application Application)
-           (javafx.scene Scene Node)
+           (javafx.scene Scene)
            (javafx.stage Stage)
-           (java.lang.reflect Method Modifier)
+           (java.lang.reflect Method Modifier Constructor)
            (javafx.collections ObservableList)
            (javafx.event EventHandler)
            (javafx.collections FXCollections)
-           (java.util WeakHashMap))
+           (java.util WeakHashMap List Collection)
+           (javafx.beans NamedArg)
+           (java.lang.annotation Annotation))
   (:require [fn-fx.util :as util]
-            [fn-fx.diff :as diff]))
+            [fn-fx.diff :as diff]
+            [clojure.set :refer [subset?]]))
 
 (set! *warn-on-reflection* true)
 
-(JFXPanel. )
-
-(def constructors (atom {}))
+(JFXPanel.)
 (def types (atom {}))
 
 (def ^:dynamic *log* false)
+(def ^:dynamic *id-map*)
 
 (defn log [form]
   (when *log*
-    (log form)))
-
-
+    (println form)))
 
 (declare create-component)
 (declare convert-observable-list)
 (declare create-event-handler)
 
 (def converter-code (atom (partition-all 2 [Integer/TYPE `int
-                                            java.lang.Integer `int
+                                            Integer `int
                                             Double/TYPE `double
+                                            Double `double
+                                            Boolean/TYPE `boolean
+                                            Boolean `boolean
                                             String `str
                                             EventHandler `create-event-handler
                                             ObservableList `convert-observable-list])))
 
 (defmacro import-components [& components]
   `(do ~@(for [component components]
-           (let [builder-name (symbol (str (name component) "Builder"))
-                 kw-name (->> (.lastIndexOf (name component) ".")
+           (let [kw-name (->> (.lastIndexOf (name component) ".")
                               inc
                               (subs (name component))
-                              keyword)
-                 ]
+                              keyword)]
              `(do (clojure.core/import ~component)
-                  (clojure.core/import ~builder-name)
                   (swap! converter-code conj [~component `create-component])
-                  (swap! constructors assoc ~kw-name ~builder-name)
                   (swap! types assoc ~kw-name ~component))))))
 
 (import-components
@@ -69,8 +66,16 @@
   javafx.scene.layout.GridPane
   javafx.scene.text.Font
   javafx.scene.text.Text
-  javafx.geometry.Insets)
-
+  javafx.geometry.Insets
+  javafx.scene.Parent
+  javafx.scene.control.Separator
+  javafx.scene.shape.Rectangle
+  javafx.scene.control.SplitPane
+  javafx.scene.layout.BorderPane
+  javafx.scene.text.TextFlow
+  javafx.scene.control.ScrollPane
+  javafx.scene.layout.Pane
+  javafx.scene.control.SelectionModel)
 
 (def get-enum-converter
   (memoize (fn [^Class to-tp]
@@ -87,58 +92,94 @@
                (log form)
                (eval form)))))
 
-
 (def get-converter
   (memoize (fn [^Class to-tp]
              (if (.isEnum to-tp)
                `(get-enum-converter ~to-tp)
-               (first (keep (fn [[^Class klass converter]]
+               (if-let [converter (first (keep (fn [[^Class klass converter]]
+                                                 (when (.isAssignableFrom to-tp klass)
+                                                   converter))
+                                               @converter-code))]
+                 converter
+                 `identity)))))
 
-                              (when (.isAssignableFrom to-tp klass)
-                                converter))
-                            @converter-code))))))
+(defn find-getters
+  [^Class tp]
+  (into {} (for [^Method m (.getMethods tp)
+                 :let [^String mn (.getName m)]
+                 :when (= 0 (.getParameterCount m))
+                 :when (or (.startsWith mn "is") (.startsWith mn "get"))
+                 :when (not (contains? #{"getClass"} (.getName m)))
+                 :let [prop-name (cond
+                                   (.startsWith mn "is") (.substring mn 2)
+                                   (.startsWith mn "get") (.substring mn 3))]]
+             (vector (keyword (apply str (Character/toLowerCase ^Character (first prop-name)) (rest prop-name)))
+                     {:getter {:method m :name mn :ret-type (.getReturnType ^Method m)}}))))
 
+(defn find-setters
+  [^Class tp]
+  (into {} (for [^Method m (.getMethods tp)
+                 :when (= 1 (.getParameterCount m))
+                 :let [^String mn (.getName m)]
+                 :when (.startsWith mn "set")
+                 :when (= Void/TYPE (.getReturnType m))
+                 :let [prop-name (.substring mn 3)
+                       ptype (aget (.getParameterTypes m) 0)]]
+             (vector (keyword (apply str (Character/toLowerCase ^Character (first prop-name)) (rest prop-name)))
+                     {:setter {:method m :name mn :param-type ptype}}))))
 
+(defn get-properties
+  [tp]
+  (merge-with merge (find-setters tp) (find-getters tp)))
 
-(def get-builder
+(defn ctor-param-names
+  [^Constructor ctor]
+  (map (fn [anns]
+         (if-let [^NamedArg ann (first
+                                  (filter
+                                    (fn [^Annotation ann] (= NamedArg (.annotationType ann)))
+                                    anns))]
+           (keyword (.value ann))))
+       (.getParameterAnnotations ctor)))
+
+(defn properly-annotated?
+  [^Constructor ctor]
+  (some (fn [anns]
+          (some (fn [^Annotation ann] (= NamedArg (.annotationType ann))) anns))
+        (.getParameterAnnotations ctor)))
+
+(defn viable-constructors
+  [^Class tp]
+  (map (fn [ctor]
+         {:params ((comp set ctor-param-names) ctor)
+          :ctor   ctor})
+       (filter (fn [^Constructor ctor]
+                 (or
+                   (properly-annotated? ctor)
+                   (zero? (.getParameterCount ctor))))
+               (.getConstructors tp))))
+
+(def get-constructor
   (memoize
-    (fn [nm]
-      (let [ctor (@constructors nm)
-            _ (assert ctor (str "No constructor for " nm))
-            form `(fn [] (. ~(@constructors nm) create))]
-        (log form)
-        (eval form)))))
+    (fn [^Class tp]
+      (let [template-sym (gensym "template")
+            ctors (sort-by (comp count :params) > (viable-constructors tp))
+            tests (for [ctor ctors] `(subset? ~(:params ctor) ~template-sym))
+            exprs (for [ctor ctors] (let [^Constructor ctor (:ctor ctor)
+                                          ctor-symbol (symbol (.getName ctor))
+                                          args (ctor-param-names ctor)
+                                          arg-lookups (for [arg args] `(~arg ~template-sym))
+                                          arg-converters (map get-converter (apply vector (.getParameterTypes ^Constructor ctor)))
+                                          form `{:ctor-params (vector ~@args)
+                                                 :object      (new ~ctor-symbol ~@(map (fn [c s] (list c s)) arg-converters arg-lookups))}]
+                                      form))
+            cond-body (interleave tests exprs)
+            else-body `(:else (assert false "There is no valid constructor for the provided template."))
 
-
-(def ^:dynamic *id-map*)
-
-
-(def get-builder-setter
-  (memoize
-    (fn [tp]
-      (let [^Class ctor (@constructors tp)
-            builder-sym (with-meta (gensym "builder")
-                                   {:tag (symbol (.getName ctor))})
-            val-sym (gensym "val")
-            clauses (for [m (.getMethods ctor)
-                          :when (Modifier/isPublic (.getModifiers ^Method m))
-                          :when (not (Modifier/isStatic (.getModifiers ^Method m)))
-                          :when (not (Modifier/isVolatile (.getModifiers ^Method m)))
-                          :when (= (.getParameterCount ^Method m) 1)
-                          :when (not (#{"applyTo"} (.getName ^Method m)))
-                          :let [arg-type (aget (.getParameterTypes ^Method m) 0)]
-                          :let [converter (get-converter arg-type)]
-                          :when converter]
-                      `[~(.getName ^Method m)
-                        (. ~builder-sym
-                           ~(symbol (.getName ^Method m))
-                           ~(with-meta `(~converter ~val-sym)
-                                       {:tag arg-type}))])
-            form `(fn [~builder-sym property# ~val-sym]
-                    (case (name property#)
-                      ~@(apply concat clauses)
-                      (println "Unknown property" property# "on" ~tp)
-                      #_(assert false (str "Unknown property" {:property-name property#}))))]
+            form `(fn [~template-sym]
+                    (cond
+                      ~@cond-body
+                      ~@else-body))]
         (log form)
         (eval form)))))
 
@@ -150,25 +191,32 @@
             obj-sym (with-meta (gensym "obj")
                                {:tag (symbol (.getName tp))})
             val-sym (gensym "val")
-            clauses (for [m (.getMethods tp)
-                          :when (= (.getParameterCount ^Method m) 1)
-                          :when (.startsWith (.getName ^Method m) "set")
-                          :let [arg-type (aget (.getParameterTypes ^Method m) 0)]
-                          :let [converter (get-converter arg-type)]
-                          :let [prop-name (let [mn (subs (.getName ^Method m) 3)]
-                                            (str (.toLowerCase (subs mn 0 1)) (subs mn 1)))]
-                          :when converter]
-                      `[~(keyword prop-name)
-                        (. ~obj-sym
-                           ~(symbol (.getName ^Method m))
-                           ~(with-meta `(~converter ~val-sym)
-                                       {:tag arg-type}))])
+            clauses (remove nil?
+                            (for [[prop-name prop-info] (get-properties tp)]
+                              (cond
+                                (contains? prop-info :setter)
+                                (let [^Method setter (get-in prop-info [:setter :method])
+                                      arg-type (aget (.getParameterTypes setter) 0)
+                                      converter (get-converter arg-type)]
+                                  `[~prop-name
+                                    (. ~obj-sym
+                                       ~(symbol (.getName setter))
+                                       ~(with-meta `(~converter ~val-sym)
+                                                   {:tag arg-type}))])
+                                (and (contains? prop-info :getter)
+                                     (isa? (get-in prop-info [:getter :ret-type]) Collection))
+                                (let [^Method getter (get-in prop-info [:getter :method])
+                                      arg-type (.getReturnType getter)
+                                      converter (get-converter arg-type)]
+                                  `[~prop-name
+                                    (.
+                                      (. ~obj-sym ~(symbol (.getName getter)))
+                                      ~(symbol "addAll") (~converter ~val-sym))]))))
 
             form `(fn [~obj-sym property# ~val-sym]
                     (case property#
                       ~@(apply concat clauses)
                       (println "Unknown property" property# " on " ~tp)))]
-
         (log form)
         (eval form)))))
 
@@ -190,12 +238,12 @@
                                             (str (.toLowerCase (subs mn 0 1)) (subs mn 1)))]
                           :when converter]
                       `[~prop-name
-                        ( ~(symbol (.getName tp)
-                                    (.getName ^Method m))
-                           ~(with-meta child-sym
-                                       {:tag arg-type0})
-                           ~(with-meta `(~converter ~val-sym)
-                                       {:tag arg-type1}))])
+                        (~(symbol (.getName tp)
+                                  (.getName ^Method m))
+                          ~(with-meta child-sym
+                                      {:tag arg-type0})
+                          ~(with-meta `(~converter ~val-sym)
+                                      {:tag arg-type1}))])
 
             form `(fn [~child-sym property# ~val-sym]
                     (case (name property#)
@@ -211,22 +259,16 @@
       (let [^Class tp tp
             obj-sym (with-meta (gensym "obj")
                                {:tag (symbol (.getName tp))})
-            clauses (for [m (.getMethods tp)
-                          :when (= (.getParameterCount ^Method m) 0)
-                          :when (.startsWith (.getName ^Method m) "get")
-                          :when (not (contains? #{"getClass"} (.getName ^Method m)))
-                          :let [prop-name (let [mn (subs (.getName ^Method m) 3)]
-                                            (str (.toLowerCase (subs mn 0 1)) (subs mn 1)))]]
-                      `[~(keyword prop-name)
+            clauses (for [[prop-name prop-info] (find-getters tp)]
+                      `[~prop-name
                         (. ~obj-sym
-                           ~(symbol (.getName ^Method m)))])
+                           ~(symbol (get-in prop-info [:getter :name])))])
             form `(fn [~obj-sym property#]
                     (case property#
                       ~@(apply concat clauses)
                       (println "Unknown property" property#)))]
         (log form)
         (eval form)))))
-
 
 (def ^:dynamic *handler-atom*)
 
@@ -259,53 +301,38 @@
                     event-properties)]
           (future (@handler-atom msg)))))))
 
-
-(def get-builder-build-fn
-  (memoize
-    (fn [tp]
-      (let [^Class ctor (@constructors tp)
-            builder-sym (with-meta (gensym "builder")
-                                   {:tag (symbol (.getName ctor))})
-            form `(fn [~builder-sym]
-                    (.build ~builder-sym))]
-        (log form)
-        (eval form)))))
-
-
 (defn convert-observable-list [itms]
-  (FXCollections/observableArrayList ^java.util.Collection (mapv create-component itms)))
+  (FXCollections/observableArrayList ^Collection (mapv create-component itms)))
 
 (def ignore-properties #{:type :fn-fx/children :fn-fx/id})
 
 (defn create-component [component]
-  (let [tp (:type component)
-        builder (get-builder tp)
-        _ (assert builder (str "Can't find constructor for" tp))
-        builder (builder)
-        setter (get-builder-setter tp)]
+  (let [tp (get @types (:type component))
+        _ (assert tp (str "Tried to create a component with an unknown type: " (:type component)))
+        ctor (get-constructor tp)
+        ctor-result (ctor component)
+        instance (:object ctor-result)
+        ctor-params (:ctor-params ctor-result)
+        setter (get-setter (type instance))]
     (reduce-kv
       (fn [_ k v]
         (when (and (not (ignore-properties k))
                    (not (namespace k)))
-          (setter builder k v)))
+          (setter instance k v)))
+      nil
+      (apply dissoc component ctor-params))
+    (reduce-kv
+      (fn [_ k v]
+        (when (and (not (ignore-properties k))
+                   (namespace k))
+          (let [tp (->> k namespace keyword (get @types))]
+            (assert tp (str "No static setter found for " (namespace k)))
+            ((get-static-setter tp) instance (name k) v))))
       nil
       component)
-    (let [built ((get-builder-build-fn tp) builder)]
-      (reduce-kv
-        (fn [_ k v]
-          (when (and (not (ignore-properties k))
-                     (namespace k))
-            (let [tp (->> k namespace keyword (get @types))]
-              (assert tp (str "No static setter found for " (namespace k)))
-              ((get-static-setter tp) built (name k) v))))
-        nil
-        component)
-      (when-let [id (:fn-fx/id component)]
-        (.put ^WeakHashMap *id-map* id built))
-      built)))
-
-
-
+    (when-let [id (:fn-fx/id component)]
+      (.put ^WeakHashMap *id-map* id instance))
+    instance))
 
 (defprotocol IRunUpdate
   (-run-update [command control])
@@ -336,12 +363,12 @@
 (extend-protocol IRunUpdate
   fn_fx.diff.ListDelete
   (-run-indexed-update [_ lst idx control]
-    (.remove ^java.util.List lst (int idx))))
+    (.remove ^List lst (int idx))))
 
 (extend-type fn_fx.diff.Create
   IRunUpdate
   (-run-indexed-update [{:keys [template]} lst idx control]
-    (.add ^java.util.List lst (int idx) (create-component template))
+    (.add ^List lst (int idx) (create-component template))
     nil))
 
 
@@ -349,7 +376,7 @@
   fn_fx.diff.ListChild
   (-run-update [{:keys [property-name updates]} control]
     (let [f (get-getter (type control))
-          ^java.util.List child-list (f control property-name)]
+          ^List child-list (f control property-name)]
       (reduce
         (fn [_ [idx commands]]
           (if (set? commands)
