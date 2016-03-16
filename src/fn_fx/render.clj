@@ -11,12 +11,11 @@
            (java.lang.annotation Annotation))
   (:require [fn-fx.util :as util]
             [fn-fx.diff :as diff]
-            [clojure.set]))
+            [clojure.set :refer [subset?]]))
 
 (set! *warn-on-reflection* true)
 
 (JFXPanel.)
-
 (def types (atom {}))
 
 (def ^:dynamic *log* false)
@@ -104,32 +103,6 @@
                  converter
                  `identity)))))
 
-(defn ctor-param-names
-  [^Constructor ctor]
-  (map (fn [anns]
-         (if-let [^NamedArg ann (first
-                                  (filter
-                                    (fn [^Annotation ann] (= NamedArg (.annotationType ann)))
-                                    anns))]
-           (keyword (.value ann))))
-       (.getParameterAnnotations ctor)))
-
-(defn properly-annotated?
-  [^Constructor ctor]
-  (some (fn [anns]
-          (some (fn [^Annotation ann] (= NamedArg (.annotationType ann))) anns))
-        (.getParameterAnnotations ctor)))
-
-(defn annotated-constructors
-  [^Class tp]
-  (into []
-        (map (juxt (comp set ctor-param-names) identity))
-        (filter (fn [^Constructor ctor]
-                  (or
-                    (properly-annotated? ctor)
-                    (zero? (.getParameterCount ctor))))
-                (.getConstructors tp))))
-
 (defn find-getters
   [^Class tp]
   (into {} (for [^Method m (.getMethods tp)
@@ -158,13 +131,40 @@
   [tp]
   (merge-with merge (find-setters tp) (find-getters tp)))
 
+(defn ctor-param-names
+  [^Constructor ctor]
+  (map (fn [anns]
+         (if-let [^NamedArg ann (first
+                                  (filter
+                                    (fn [^Annotation ann] (= NamedArg (.annotationType ann)))
+                                    anns))]
+           (keyword (.value ann))))
+       (.getParameterAnnotations ctor)))
+
+(defn properly-annotated?
+  [^Constructor ctor]
+  (some (fn [anns]
+          (some (fn [^Annotation ann] (= NamedArg (.annotationType ann))) anns))
+        (.getParameterAnnotations ctor)))
+
+(defn viable-constructors
+  [^Class tp]
+  (map (fn [ctor]
+         {:params ((comp set ctor-param-names) ctor)
+          :ctor   ctor})
+       (filter (fn [^Constructor ctor]
+                 (or
+                   (properly-annotated? ctor)
+                   (zero? (.getParameterCount ctor))))
+               (.getConstructors tp))))
+
 (def get-constructor
   (memoize
     (fn [^Class tp]
       (let [template-sym (gensym "template")
-            ctors (sort-by (fn [[params _]] (count params)) > (annotated-constructors tp))
-            clauses (for [ctor ctors] `(clojure.set/subset? ~(first ctor) ~template-sym))
-            exprs (for [ctor ctors] (let [^Constructor ctor (second ctor)
+            ctors (sort-by (comp count :params) > (viable-constructors tp))
+            tests (for [ctor ctors] `(subset? ~(:params ctor) ~template-sym))
+            exprs (for [ctor ctors] (let [^Constructor ctor (:ctor ctor)
                                           ctor-symbol (symbol (.getName ctor))
                                           args (ctor-param-names ctor)
                                           arg-lookups (for [arg args] `(~arg ~template-sym))
@@ -172,8 +172,8 @@
                                           form `{:ctor-params (vector ~@args)
                                                  :object      (new ~ctor-symbol ~@(map (fn [c s] (list c s)) arg-converters arg-lookups))}]
                                       form))
-            cond-body (interleave clauses exprs)
-            else-body `(:else "No valid constructor for the template provided!")
+            cond-body (interleave tests exprs)
+            else-body `(:else (assert false "There is no valid constructor for the provided template."))
 
             form `(fn [~template-sym]
                     (cond
