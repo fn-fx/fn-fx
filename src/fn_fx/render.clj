@@ -109,6 +109,7 @@
                  :let [^String mn (.getName m)]
                  :when (= 0 (.getParameterCount m))
                  :when (or (.startsWith mn "is") (.startsWith mn "get"))
+                 :when (not (contains? #{"getClass"} (.getName m)))
                  :let [prop-name (cond
                                    (.startsWith mn "is") (.substring mn 2)
                                    (.startsWith mn "get") (.substring mn 3))]]
@@ -258,15 +259,10 @@
       (let [^Class tp tp
             obj-sym (with-meta (gensym "obj")
                                {:tag (symbol (.getName tp))})
-            clauses (for [m (.getMethods tp)
-                          :when (= (.getParameterCount ^Method m) 0)
-                          :when (.startsWith (.getName ^Method m) "get")
-                          :when (not (contains? #{"getClass"} (.getName ^Method m)))
-                          :let [prop-name (let [mn (subs (.getName ^Method m) 3)]
-                                            (str (.toLowerCase (subs mn 0 1)) (subs mn 1)))]]
-                      `[~(keyword prop-name)
+            clauses (for [[prop-name prop-info] (find-getters tp)]
+                      `[~prop-name
                         (. ~obj-sym
-                           ~(symbol (.getName ^Method m)))])
+                           ~(symbol (get-in prop-info [:getter :name])))])
             form `(fn [~obj-sym property#]
                     (case property#
                       ~@(apply concat clauses)
