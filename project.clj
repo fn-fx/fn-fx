@@ -5,6 +5,8 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.7.0-alpha5"]
                  [org.clojure/core.memoize "0.5.6"]
-                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]]
+                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]
+                 [org.clojure/core.match "0.3.0-alpha4"]
+                 [org.reflections/reflections "0.9.10"]]
   :profiles {:dev {:source-paths ["src" "examples"]
                    :dependencies [[org.clojure/core.match "0.3.0-alpha4"]]}})
