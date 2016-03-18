@@ -41,7 +41,6 @@
 
 
 
-
 (defrecord App [prev-state dom root handler-fn])
 
 (defn default-handler-fn [data]

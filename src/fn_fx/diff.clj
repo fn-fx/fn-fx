@@ -36,7 +36,7 @@
     (nil? a) :nil
     (instance? Component a) :comp
     (satisfies? IUserComponent a) :ucomp
-    :else (assert false (str "Bad value type " (type a)))))
+    :else (assert false (str "Bad value type " (type a) " " a))))
 
 (defn needs-update? [from to]
   (let [{:keys [props]} to]

@@ -74,15 +74,15 @@
 
 (deftest static-member-tests
   (let [spec (ui :stage :title "Login"
-                 :scene (ui :scene
-                            :root (ui :grid-pane
-                                      :children [(ui :text
-                                                     :text "Welcome"
-                                                     :grid-pane/column-index 0
-                                                     :grid-pane/row-index 0
-                                                     :grid-pane/column-span 2
-                                                     :grid-pane/row-span 1)]
-                                      )))
+               :scene (ui :scene
+                        :root (ui :grid-pane
+                                :children [(ui :text
+                                             :text "Welcome"
+                                             :grid-pane/column-index 0
+                                             :grid-pane/row-index 0
+                                             :grid-pane/column-span 2
+                                             :grid-pane/row-span 1)]
+                                )))
         {:keys [root] :as app} (dom/app spec)]
     (is root)
 
