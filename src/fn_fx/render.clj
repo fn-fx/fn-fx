@@ -12,7 +12,8 @@
            (java.util WeakHashMap)
            (org.reflections Reflections))
   (:require [fn-fx.util :as util]
-            [fn-fx.diff :as diff]))
+            [fn-fx.diff :as diff]
+            [clojure.string :as string]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,7 +27,7 @@
 
 (defn log [form]
   (when *log*
-    (log form)))
+    (println form)))
 
 (defn scan-all []
   (let [ref      (Reflections. "javafx" nil)
@@ -88,7 +89,8 @@
   (memoize (fn [^Class to-tp]
              (let [clauses (mapcat
                              (fn [o]
-                               `[~(keyword (.toLowerCase ^String (str o)))
+                               `[~(keyword (string/replace (.toLowerCase ^String (str o))
+                                             #"\_" "-"))
                                  ~(symbol (.getName to-tp) (str o))])
                              (.getEnumConstants to-tp))
                    fn-name (symbol (str "-enum-converter-" (munge (.getName to-tp))))
@@ -163,7 +165,8 @@
                  :when (.startsWith (.getName ^Method m) "get")
                  :let [arg-type (.getReturnType ^Method m)]
                  :let [converter (get-converter arg-type)]
-                 :when (not (primitive-properties arg-type))
+                 :when (and (not (primitive-properties arg-type))
+                         (not (.isEnum arg-type)))
                  :let [prop-name (let [mn (subs (.getName ^Method m) 3)]
                                    (str (.toLowerCase (subs mn 0 1)) (subs mn 1)))]
                  :when converter]

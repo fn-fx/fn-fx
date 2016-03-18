@@ -10,6 +10,7 @@
   IDom
   (create-component! [this type spec]
     (run-and-wait
+      (println type spec)
       (binding [render/*handler-fn* handler-fn]
         (render/create-component type spec))))
 
