@@ -36,7 +36,7 @@
     (nil? a) :nil
     (instance? Component a) :comp
     (satisfies? IUserComponent a) :ucomp
-    :else (assert false (str "Bad value type " (type a)))))
+    :else (assert false (str "Bad value type " (type a) " " a))))
 
 (defn needs-update? [from to]
   (let [{:keys [props]} to]
@@ -132,7 +132,8 @@
                  (reset! has-should-update? true))
                (conj acc fn))
              []
-             fns)]
+             fns)
+        fn-name (symbol (util/camel->kabob nm))]
     `(let [kw# (keyword (name (.getName ^clojure.lang.Namespace *ns*)) ~(name nm))]
            (defquasitype ~nm [~'type ~'props ~'render-result]
                        IUserComponent
@@ -140,8 +141,12 @@
                        ~@(when (not @has-should-update?)
                            `[(should-update? [this# old-props# new-props#]
                                            (= old-props# new-props#))]))
-         (defn  ~(symbol (util/camel->kabob nm)) [& {:as props#}]
-           (~(symbol (str "->" (name nm)))
-             kw#
-             props#
-             nil)))))
+         (defn ~fn-name
+           ([] (~fn-name {}))
+           ([k# v# & props#]
+             (~fn-name (apply hash-map k# v# props#)))
+           ([props#]
+             (~(symbol (str "->" (name nm)))
+               kw#
+               props#
+               nil))))))

@@ -1,2 +1,0 @@
-(ns fn-fx.component)
-

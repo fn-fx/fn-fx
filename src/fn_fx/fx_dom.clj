@@ -10,6 +10,7 @@
   IDom
   (create-component! [this type spec]
     (run-and-wait
+      (println type spec)
       (binding [render/*handler-fn* handler-fn]
         (render/create-component type spec))))
 
@@ -37,7 +38,6 @@
         (let [^List lst (getter parent k)]
           (assert (= idx (dec (count lst))) "TODO: Implement this")
           (.remove lst idx))))))
-
 
 
 

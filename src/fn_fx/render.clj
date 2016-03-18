@@ -12,7 +12,8 @@
            (java.util WeakHashMap)
            (org.reflections Reflections))
   (:require [fn-fx.util :as util]
-            [fn-fx.diff :as diff]))
+            [fn-fx.diff :as diff]
+            [clojure.string :as string]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,7 +27,7 @@
 
 (defn log [form]
   (when *log*
-    (log form)))
+    (println form)))
 
 (defn scan-all []
   (let [ref      (Reflections. "javafx" nil)
@@ -88,7 +89,8 @@
   (memoize (fn [^Class to-tp]
              (let [clauses (mapcat
                              (fn [o]
-                               `[~(keyword (.toLowerCase ^String (str o)))
+                               `[~(keyword (string/replace (.toLowerCase ^String (str o))
+                                             #"\_" "-"))
                                  ~(symbol (.getName to-tp) (str o))])
                              (.getEnumConstants to-tp))
                    fn-name (symbol (str "-enum-converter-" (munge (.getName to-tp))))
@@ -148,13 +150,13 @@
             form        `(fn [~builder-sym property# ~val-sym]
                            (case property#
                              ~@(apply concat clauses)
-                             (println "Unknown property" property# "on" ~tp)
+                             (println "Unknown builder property" property# "on" ~tp)
                              #_(assert false (str "Unknown property" {:property-name property#}))))]
         (log form)
         (eval form)))))
 
 (def primitive-properties #{Integer Long Double Float String BigDecimal BigInteger
-                            EventHandler})
+                            EventHandler Integer/TYPE Long/TYPE Double/TYPE Float/TYPE})
 
 (def children-properties
   (memoize
@@ -163,7 +165,8 @@
                  :when (.startsWith (.getName ^Method m) "get")
                  :let [arg-type (.getReturnType ^Method m)]
                  :let [converter (get-converter arg-type)]
-                 :when (not (primitive-properties arg-type))
+                 :when (and (not (primitive-properties arg-type))
+                         (not (.isEnum arg-type)))
                  :let [prop-name (let [mn (subs (.getName ^Method m) 3)]
                                    (str (.toLowerCase (subs mn 0 1)) (subs mn 1)))]
                  :when converter]
@@ -199,7 +202,7 @@
                            (let [syn# (get-in synthetic-properties [(@types->kw ~tp) property# :set])]
                              (if syn#
                                (syn# ~obj-sym property# ~val-sym)
-                               (println "Unknown property" property# " on " ~tp)))))]
+                               (println "Unknown setter property" property# " on " ~tp)))))]
 
         (log form)
         (eval form)))))
@@ -263,12 +266,10 @@
 (def ^:dynamic *handler-fn*)
 
 (defn create-event-handler [{:keys [include event-properties] :as template}]
-  (println "HANDLER " template)
   (let [handler-fn *handler-fn*]
     (reify EventHandler
       (handle [this event]
         (future
-          (println "FIRIGN")
           (handler-fn template))))))
 
 
@@ -296,11 +297,12 @@
   (let [builder (get-builder tp)
         _       (assert builder (str "Can't find constructor for" tp (pr-str component)))
         builder (builder)
-        setter  (get-builder-setter tp)]
+        setter  (get-builder-setter tp)
+        synths (synthetic-properties tp)]
     (reduce-kv
       (fn [_ k v]
         (when (and (not (ignore-properties k))
-                   (not (synthetic-properties k))
+                   (not (contains? synths k))
                    (not (namespace k)))
           (setter builder k v)))
       nil
@@ -319,7 +321,7 @@
           built-setter (get-setter (@types tp))]
       (reduce-kv
         (fn [_ k v]
-          (when (synthetic-properties tp)
+          (when (contains? synths k)
             (built-setter built k v)))
         nil
         component)
