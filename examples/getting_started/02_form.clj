@@ -16,7 +16,7 @@
       :vgap 10
       :columns 2
       :rows 6
-      :padding (ui :insets
+      :padding (ui :insets 
                  :bottom 25
                  :left 25
                  :right 25
