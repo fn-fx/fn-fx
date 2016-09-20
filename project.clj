@@ -2,9 +2,13 @@
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
-            :url "http://www.eclipse.org/legal/epl-v10.html"}
+            :url  "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/core.match "0.3.0-alpha4"]
                  [org.reflections/reflections "0.9.10"]]
+
   :profiles {:dev {:source-paths ["src" "examples"]
-                   :dependencies [[org.clojure/core.match "0.3.0-alpha4"]]}})
+                   :dependencies [[com.github.javaparser/javaparser-core "2.5.1"]
+                                  [org.jboss.forge.roaster/roaster-api "2.19.0.Final"]
+                                  [org.jboss.forge.roaster/roaster-jdt "2.19.0.Final"]]
+                   }})

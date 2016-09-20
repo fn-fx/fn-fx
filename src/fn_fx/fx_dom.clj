@@ -1,5 +1,5 @@
 (ns fn-fx.fx-dom
-  (:require [fn-fx.render :as render]
+  (:require [fn-fx.render-core :as render-core]
             [fn-fx.diff :refer [IDom diff component]]
             [fn-fx.util :refer [run-and-wait run-later]])
   (:import (java.util List)))
@@ -8,36 +8,35 @@
 
 (deftype FXDom [handler-fn]
   IDom
-  (create-component! [this type spec]
+  (create-component! [this type]
     (run-and-wait
-      (println type spec)
-      (binding [render/*handler-fn* handler-fn]
-        (render/create-component type spec))))
+      (binding [render-core/*handler-fn* handler-fn]
+        (render-core/construct-control type))))
 
   (set-property! [this node property value]
-    (let [setter (render/get-setter (type node))]
-      (run-and-wait
-        (binding [render/*handler-fn* handler-fn]
-          (setter node property value)))))
+    (println "SET PROPERTY " node property value)
+    (run-and-wait
+      (binding [render-core/*handler-fn* handler-fn]
+        (render-core/set-property node property value))))
 
   (set-child! [this parent k child]
-    (let [setter (render/get-setter (type parent))]
-      (run-and-wait
-        (setter parent k child))))
+    (println "Child " parent k child)
+    (run-and-wait
+      (render-core/set-property parent k child)))
 
   (set-indexed-child! [this parent k idx child]
-    (let [getter (render/get-getter (type parent))]
-      (run-and-wait
-        (let [^List lst (getter parent k)]
-          (assert (= idx (count lst)) "TODO: Implement this")
-          (.add lst child)))))
+    (run-and-wait
+      (let [^List lst (render-core/get-property parent k)]
+        (assert (= idx (count lst)) "TODO: Implement this")
+        (.add lst child))))
 
   (delete-indexed-child! [this parent k idx child]
-    (let [getter (render/get-getter (type parent))]
-      (run-and-wait
-        (let [^List lst (getter parent k)]
-          (assert (= idx (dec (count lst))) "TODO: Implement this")
-          (.remove lst idx))))))
+    (run-and-wait
+      (let [^List lst (render-core/get-property parent k)]
+        (assert (= idx (dec (count lst))) "TODO: Implement this")
+        (.remove lst idx))))
+  (delete-component! [this node]
+    nil))
 
 
 

@@ -4,15 +4,16 @@
 
 (extend-type clojure.lang.Atom
   IDom
-  (create-component! [this type spec]
+  (create-component! [this type]
     (let [id (:id (swap! this update-in [:id] inc))]
-      (swap! this update-in [:log] conj [:create id type spec])
+      (swap! this update-in [:log] conj [:create id type])
       id))
 
   (delete-component! [this node]
     (swap! this update-in [:log] conj [:delete node]))
 
   (set-child! [this parent id child]
+    (pr)
     (swap! this update-in [:log] conj [:set-child parent id child]))
 
   (set-property! [this node property value]
@@ -36,18 +37,22 @@
       (is (= (->Created 1) (diff log nil component)))
       (is (= (:dom-node component) 1))
       (is (= @log {:id  1
-                   :log [[:create 1 :button {:text "Hello World"}]]}))))
+                   :log [[:create 1 :button]
+                         [:set-property 1 :text "Hello World"]]}))))
 
   (testing "from nil to nested component"
     (let [log       (log)
-          component (component :stage {:text "Hey"}
-                               {:root (component :button {:text "Hello World"})})]
+          component (component :stage
+                               {:text "Hey"
+                                :root (component :button {:text "Hello World"})})]
       (is (= (->Created 1) (diff log nil component)))
       (is (= (:dom-node component) 1))
       (is (= @log {:id  2
-                   :log [[:create 1 :stage {:text "Hey"}]
-                         [:create 2 :button {:text "Hello World"}]
-                         [:set-child 1 :root 2]]}))))
+                   :log [[:create 1 :stage]
+                         [:set-property 1 :text "Hey"]
+                         [:create 2 :button]
+                         [:set-property 2 :text "Hello World"]
+                         [:set-property 1 :root 2]]}))))
 
   (testing "from nil to user component"
 
@@ -61,7 +66,8 @@
 
       (is (= (->Created 1) (diff log nil component)))
       (is (= @log {:id  1
-                   :log [[:create 1 :button {:text "Hello World"}]]}))))
+                   :log [[:create 1 :button]
+                         [:set-property 1 :text "Hello World"]]}))))
 
   (testing "from nil to nested user components"
 
@@ -71,17 +77,19 @@
 
     (defui NestedComponent
       (render [this props]
-        (component :stage {:text "Hey"}
-                   {:root (internal-component)})))
+        (component :stage
+                   {:text "Hey" :root (internal-component)})))
 
 
     (let [log       (log)
           component (nested-component)]
       (is (= (->Created 1) (diff log nil component)))
       (is (= @log {:id  2
-                   :log [[:create 1 :stage {:text "Hey"}]
-                         [:create 2 :button {:text "Hello World"}]
-                         [:set-child 1 :root 2]]}))))
+                   :log [[:create 1 :stage]
+                         [:set-property 1 :text "Hey"]
+                         [:create 2 :button]
+                         [:set-property 2 :text "Hello World"]
+                         [:set-property 1 :root 2]]}))))
   )
 
 
@@ -94,7 +102,8 @@
       (is (= (->Updated 1) (diff log component-a component-b)))
 
       (is (= @log {:id  1
-                   :log [[:create 1 :button {:text "test1"}]
+                   :log [[:create 1 :button]
+                         [:set-property 1 :text "test1"]
                          [:set-property 1 :text "test2"]]}))))
 
   (testing "can change component types"
@@ -105,9 +114,11 @@
       (is (= (->Created 2) (diff log component-a component-b)))
 
       (is (= @log {:id  2
-                   :log [[:create 1 :button {:text "test1"}]
+                   :log [[:create 1 :button]
+                         [:set-property 1 :text "test1"]
                          [:delete 1]
-                         [:create 2 :text {:text "test2"}]]}))))
+                         [:create 2 :text]
+                         [:set-property 2 :text "test2"]]}))))
 
   (testing "can diff two user components"
     (defui BranchingComponent
@@ -131,58 +142,65 @@
         (is (:dom-node (:render-result state-b)))
 
         (is (= @log {:id  1
-                     :log [[:create 1 :button {:text "Start"}]]}))
+                     :log [[:create 1 :button]
+                           [:set-property 1 :text "Start"]]}))
 
 
         (let [state-c (component-fn true)]
           (is (= (->Updated 1) (diff log state-b state-c))))
 
         (is (= @log {:id  1
-                     :log [[:create 1 :button {:text "Start"}]
+                     :log [[:create 1 :button]
+                           [:set-property 1 :text "Start"]
                            [:set-property 1 :text "End"]]}))))))
 
 
 (deftest component-child-list-diffing
   (testing "can add children to a list"
     (let [log         (log)
-          component-a (component :list {} {:children []})
-          component-b (component :list {} {:children [(component :text {:text "Hey"})]})
-          component-c (component :list {} {:children []})]
+          component-a (component :list {:children []})
+          component-b (component :list {:children [(component :text {:text "Hey"})]})
+          component-c (component :list {:children []})]
       (is (= (->Created 1) (diff log nil component-a)))
 
       (is (= @log {:id  1
-                   :log [[:create 1 :list {}]]}))
+                   :log [[:create 1 :list]]}))
 
       (is (= (->Updated 1) (diff log component-a component-b)))
 
       (is (= @log {:id  2
-                   :log [[:create 1 :list {}]
-                         [:create 2 :text {:text "Hey"}]
+                   :log [[:create 1 :list]
+                         [:create 2 :text]
+                         [:set-property 2 :text "Hey"]
                          [:set-indexed-child 1 :children 0 2]]}))
 
       (is (= (->Updated 1) (diff log component-b component-c)))
 
       (is (= @log {:id  2
-                   :log [[:create 1 :list {}]
-                         [:create 2 :text {:text "Hey"}]
+                   :log [[:create 1 :list]
+                         [:create 2 :text]
+                         [:set-property 2 :text "Hey"]
                          [:set-indexed-child 1 :children 0 2]
                          [:delete-indexed-child 1 :children 0 2]]}))))
 
 
   (testing "complex nesting"
     (let [log         (log)
-          component-a (component :Stage {:title "Hello"}
-                                 {:scene (component :ListView {}
+          component-a (component :Stage
+                                 {:title "Hello"
+                                  :scene (component :ListView
                                                     {:items [(component :Button
                                                                         {:text "Hello"})]})})]
 
       (is (= (->Created 1) (diff log nil component-a)))
       (is (= @log {:id  3
-                   :log [[:create 1 :Stage {:title "Hello"}]
-                         [:create 2 :ListView {}]
-                         [:create 3 :Button {:text "Hello"}]
+                   :log [[:create 1 :Stage]
+                         [:set-property 1 :title "Hello"]
+                         [:create 2 :ListView]
+                         [:create 3 :Button]
+                         [:set-property 3 :text "Hello"]
                          [:set-indexed-child 2 :items 0 3]
-                         [:set-child 1 :scene 2]]})))))
+                         [:set-property 1 :scene 2]]})))))
 
 
 (deftest component-should-update-tests
@@ -202,7 +220,8 @@
 
       (is (= @log {:id 1
 
-                   :log [[:create 1 :button {:text "Hey"}]]}))
+                   :log [[:create 1 :button]
+                         [:set-property 1 :text "Hey"]]}))
 
       (reset! rendered? false)
 
@@ -210,4 +229,5 @@
       (is rendered? true)
 
       (is (= @log {:id 1
-                   :log [[:create 1 :button {:text "Hey"}]]})))))
+                   :log [[:create 1 :button]
+                         [:set-property 1 :text "Hey"]]})))))

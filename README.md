@@ -60,10 +60,10 @@ and diffing if the properties of the component haven't changed since the last re
       :columns 2
       :rows 6
       :padding (ui :insets
-                 :bottom 25
-                 :left 25
-                 :right 25
-                 :top 25)
+                       :bottom 25
+                       :left 25
+                       :right 25
+                       :top 25)
       :children [(ui :text
                    :text "Welcome"
                    :font (ui :font

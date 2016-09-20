@@ -6,14 +6,14 @@
 (declare diff)
 
 (defprotocol IDom
-  (create-component! [this type spec])
+  (create-component! [this type])
   (delete-component! [this node])
   (set-child! [this parent id child])
   (set-indexed-child! [this parent k idx child])
   (delete-indexed-child! [this parent k idx child])
   (set-property! [this node property value]))
 
-(defquasitype Component [type dom-node props children])
+(defquasitype Component [type dom-node props])
 
 (defquasitype UserComponent [type props render-fn render-result])
 
@@ -23,6 +23,7 @@
 
 (defrecord Created [node])
 (defrecord Updated [node])
+(defrecord NewValue [value])
 (defrecord Deleted [node])
 (defrecord Noop [node])
 
@@ -36,7 +37,7 @@
     (nil? a) :nil
     (instance? Component a) :comp
     (satisfies? IUserComponent a) :ucomp
-    :else (assert false (str "Bad value type " (type a) " " a))))
+    :else :val))
 
 (defn needs-update? [from to]
   (let [{:keys [props]} to]
@@ -59,20 +60,42 @@
           Deleted (delete-indexed-child! dom parent-node k idx node)
           Updated nil)))))
 
+(defn diff-component [dom dom-node spec-a spec-b]
+  (reduce-kv
+    (fn [_ k va]
+      (let [vb (get spec-b k)]
+        (if (sequential? vb)
+          (diff-child-list dom dom-node k va vb)
+          (let [result (diff dom va vb)]
+            (if (instance? Created result)
+              (set-property! dom dom-node k (:node result)))))))
+    nil
+    spec-a)
+
+  (reduce-kv
+    (fn [_ k vb]
+      (when-not (get spec-a k)
+        (if (sequential? vb)
+          (diff-child-list dom dom-node k nil vb)
+          (let [result (diff dom nil vb)]
+            (if (instance? Created result)
+              (set-property! dom dom-node k (:node result)))))))
+    nil
+    spec-b))
+
 (defn diff [dom a b]
   (match [(val-type a) (val-type b)]
-    [:nil :comp] (let [node (create-component! dom (:type b) (:props b))]
+    [:nil :comp] (let [node (create-component! dom (:type b))]
                    (assert node "No Node returned by create-component!")
                    (set-once! b :dom-node node)
-                   (reduce-kv
-                     (fn [_ k v]
-                       (if (sequential? v)
-                         (diff-child-list dom node k nil v)
-                         (let [child (:node (diff dom nil v))]
-                           (set-child! dom node k child))))
-                     nil
-                     (:children b))
+                   (diff-component dom node nil (:props b))
                    (->Created node))
+
+    [:val :val] (if (= a b)
+                  (->Noop b)
+                  (->Created b))
+
+    [:nil :val] (->Created b)
 
     [:nil :ucomp] (diff dom nil (render-user-component b))
 
@@ -86,7 +109,10 @@
                           dom-node (:dom-node a)]
                       (assert dom-node (str "No DOM Node" (pr-str a)))
                       (set-once! b :dom-node dom-node)
-                      (reduce-kv
+
+                      (diff-component dom dom-node spec-a spec-b)
+
+                      #_(reduce-kv
                         (fn [_ k va]
                           (let [vb (get spec-b k)]
                             (when (not= va vb)
@@ -94,7 +120,7 @@
                         nil
                         spec-a)
 
-                      (let [children-a (:children a)]
+                      #_(let [children-a (:children a)]
                         (reduce-kv
                           (fn [_ k vb]
                             (let [va (get children-a k)]
@@ -116,9 +142,7 @@
 
 (defn component
   ([type spec]
-   (component type spec nil))
-  ([type spec children]
-   (->Component type nil spec children)))
+   (->Component type nil spec)))
 
 (def valid-ui-fns '#{render should-update?})
 
