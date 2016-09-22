@@ -2,13 +2,16 @@
   (:require [fn-fx.diff :as diff]
             [fn-fx.util :as util]
             [fn-fx.util.reflect-utils :as ru]
+            [fn-fx.fx-tree-search :as tree-search]
             [clojure.string :as str])
   (:import (javafx.embed.swing JFXPanel)
            (javax.swing JFrame)
            (java.lang.reflect Constructor Method Parameter Modifier)
            (javafx.scene.layout StackPane VBox)
-           (javafx.event EventHandler)
+           (javafx.event EventHandler Event)
            (java.io Writer)))
+
+(set! *warn-on-reflection* true)
 
 (JFXPanel.)
 
@@ -220,8 +223,8 @@
 
 (defmethod set-property [javafx.stage.Window :shown]
   [^javafx.stage.Window w _ val]
-  (println "WHO")
   (if val
+    ;; Reflection here, but this method is protected so what can we do?
     (.show w)
     (.hide w)))
 
@@ -232,12 +235,27 @@
   (javafx.scene.layout.VBox.))
 
 (defmethod convert-value [clojure.lang.ILookup EventHandler]
-  [template _]
+  [{:keys [fn-fx/include] :as template} _]
   (let [handler-fn *handler-fn*]
     (reify EventHandler
-      (handle [this event]
+      (^void handle [this ^Event event]
         (future
-          (handler-fn template))))))
+          (let [includes (time (reduce-kv
+                                 (fn [acc id props]
+                                   (println "Looking for " id props)
+                                   (if-let [node (tree-search/find-nearest-by-id (.getTarget event) (str id))]
+                                     (assoc acc id
+                                                (reduce
+                                                  (fn [acc prop]
+                                                    (assoc acc prop (get-property node prop)))
+                                                  {}
+                                                  props))
+                                     acc))
+                                 {}
+                                 include))]
+            (handler-fn (assoc template
+                          :fn-fx/includes includes))
+            nil))))))
 
 (defmethod convert-value [Long Integer]
   [v _]
@@ -246,3 +264,15 @@
 (defmethod convert-value [Double Double/TYPE]
   [v _]
   (double v))
+
+(defmethod convert-value [clojure.lang.Keyword java.lang.String]
+  [v _]
+  (str v))
+
+(defmethod convert-value [Double Integer/TYPE]
+  [v _]
+  (int v))
+
+(defmethod convert-value [Boolean Boolean/TYPE]
+  [v _]
+  (boolean v))

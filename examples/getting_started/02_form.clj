@@ -3,7 +3,7 @@
             [fn-fx.diff :refer [component defui render should-update?]]
             [fn-fx.controls :as ui]))
 
-(defn firebrick []
+(def firebrick
   (ui/color :red 0.69 :green 0.13 :blue 0.13))
 
 ;; The main login window component, notice the authed? parameter, this defines a function
@@ -36,6 +36,7 @@
                    :grid-pane/row-index 1)
 
                  (ui/text-field
+                   :id :user-name-field
                    :grid-pane/column-index 1
                    :grid-pane/row-index 1)
 
@@ -44,6 +45,7 @@
                    :grid-pane/row-index 2)
 
                  (ui/password-field
+                   :id :password-field
                    :grid-pane/column-index 1
                    :grid-pane/row-index 2)
 
@@ -51,35 +53,37 @@
                    :spacing 10
                    :alignment :bottom-right
                    :children [(ui/button :text "Sign in"
-                                :on-action {:event :auth})]
+                                :on-action {:event :auth
+                                            :fn-fx/include {:user-name-field #{:text}
+                                                            :password-field #{:text}}})]
                    :grid-pane/column-index 1
                    :grid-pane/row-index 4)
 
                  (ui/text
                    :text (if authed? "Sign in was pressed" "")
-                   :fill (firebrick)
+                   :fill firebrick
                    :grid-pane/column-index 1
                    :grid-pane/row-index 6)])))
 
 ;; Wrap our login form in a stage/scene, and create a "stage" function
 (defui Stage
-  (render [this args]
-    (ui/stage
-      :title "JavaFX Welcome"
-      :shown true
-      :scene (ui/scene
-               :root (login-window args)))))
+       (render [this args]
+               (ui/stage
+                 :title "JavaFX Welcome"
+                 :shown true
+                 :scene (ui/scene
+                          :root (login-window args)))))
 
 (defn -main []
   (let [;; Data State holds the business logic of our app
         data-state (atom {:authed? false})
 
         ;; handler-fn handles events from the ui and updates the data state
-        handler-fn (fn [{:keys [event]}]
-                     (println "UI Event" event)
+        handler-fn (fn [{:keys [event] :as all-data}]
+                     (println "UI Event" event all-data)
                      (case event
                        :auth (swap! data-state assoc :authed? true)
-                       (println "Unknown UI event" event)))
+                       (println "Unknown UI event" event all-data)))
 
         ;; ui-state holds the most recent state of the ui
         ui-state (agent (dom/app (stage @data-state) handler-fn))]
@@ -87,8 +91,8 @@
     ;; Every time the data-state changes, queue up an update of the UI
     (add-watch data-state :ui (fn [_ _ _ _]
                                 (send ui-state
-                                  (fn [old-ui]
-                                    (dom/update-app old-ui (stage @data-state))))))))
+                                      (fn [old-ui]
+                                        (dom/update-app old-ui (stage @data-state))))))))
 
 (comment
   (-main)

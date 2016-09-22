@@ -26,6 +26,7 @@
 
   (set-indexed-child! [this parent k idx child]
     (run-and-wait
+      (println "Set child")
       (let [^List lst (render-core/get-property parent k)]
         (assert (= idx (count lst)) "TODO: Implement this")
         (.add lst child))))
@@ -33,8 +34,11 @@
   (delete-indexed-child! [this parent k idx child]
     (run-and-wait
       (let [^List lst (render-core/get-property parent k)]
+        (println "Removing " parent k idx)
+        (println "LST " k parent (ancestors (type lst)) (count lst) idx)
         (assert (= idx (dec (count lst))) "TODO: Implement this")
-        (.remove lst idx))))
+        (.remove lst ^int idx)
+        (println "AFTER" (count lst)))))
   (delete-component! [this node]
     nil))
 

@@ -54,11 +54,13 @@
     (let [a (nth a-list idx nil)
           b (nth b-list idx nil)]
       (let [{:keys [node] :as result} (diff dom a b)]
+        (println result k idx)
         (condp instance? result
           ;; TODO: Unmount?
           Created (set-indexed-child! dom parent-node k idx node)
           Deleted (delete-indexed-child! dom parent-node k idx node)
-          Updated nil)))))
+          Updated nil
+          Noop nil)))))
 
 (defn diff-component [dom dom-node spec-a spec-b]
   (reduce-kv
@@ -84,6 +86,7 @@
     spec-b))
 
 (defn diff [dom a b]
+  (println (val-type a) (val-type b))
   (match [(val-type a) (val-type b)]
     [:nil :comp] (let [node (create-component! dom (:type b))]
                    (assert node "No Node returned by create-component!")
@@ -99,6 +102,8 @@
 
     [:nil :ucomp] (diff dom nil (render-user-component b))
 
+    [:ucomp :nil] (diff dom (render-user-component a) nil)
+
     [:ucomp :ucomp] (if (needs-update? a b)
                       (diff dom (render-user-component a) (render-user-component b))
                       (->Noop (:dom-node (:render-result b))))
@@ -112,26 +117,6 @@
 
                       (diff-component dom dom-node spec-a spec-b)
 
-                      #_(reduce-kv
-                        (fn [_ k va]
-                          (let [vb (get spec-b k)]
-                            (when (not= va vb)
-                              (set-property! dom dom-node k vb))))
-                        nil
-                        spec-a)
-
-                      #_(let [children-a (:children a)]
-                        (reduce-kv
-                          (fn [_ k vb]
-                            (let [va (get children-a k)]
-                              (if (sequential? vb)
-                                (diff-child-list dom dom-node k va vb)
-                                (let [{:keys [node] :as result} (diff dom va vb)]
-                                  (when (instance? Created result)
-                                    ;; TODO: Unmount?
-                                    (set-child! dom dom-node k node))))))
-                          nil
-                          (:children b)))
 
                       (->Updated dom-node))
                     (do (delete-component! dom (:dom-node a))
