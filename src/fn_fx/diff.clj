@@ -54,7 +54,6 @@
     (let [a (nth a-list idx nil)
           b (nth b-list idx nil)]
       (let [{:keys [node] :as result} (diff dom a b)]
-        (println result k idx)
         (condp instance? result
           ;; TODO: Unmount?
           Created (set-indexed-child! dom parent-node k idx node)
@@ -86,7 +85,6 @@
     spec-b))
 
 (defn diff [dom a b]
-  (println (val-type a) (val-type b))
   (match [(val-type a) (val-type b)]
     [:nil :comp] (let [node (create-component! dom (:type b))]
                    (assert node "No Node returned by create-component!")

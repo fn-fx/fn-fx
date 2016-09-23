@@ -33,7 +33,8 @@
         ctor-helper `(~'defmacro ~symname [& {:as ~'props}]
                        (render-core/component-impl
                          ~kw-name
-                         ~'props))]
+                         ~'props
+                         ~(set (ru/get-static-control-properties to-tp))))]
     (when ctor-def
       (swap! *forms* conj ctor-helper))))
 

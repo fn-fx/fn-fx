@@ -158,3 +158,17 @@
        (sort-by (comp count :prop-names))
        (filter :is-ctor?)
        first))
+
+(defn get-static-control-properties [^Class k]
+  (->> (get-value-ctors k)
+       (mapcat :prop-names-kw)
+       set
+       (remove
+         (fn [nm]
+           (let [pnm (str "set" (util/kabob->class (name nm)))]
+             (->> (.getMethods k)
+                  (filter
+                    (fn [^Method m]
+                      (and (= (.getName m) pnm)
+                           (= (.getParameterCount m) 1))))
+                  first))))))

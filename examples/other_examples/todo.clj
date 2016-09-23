@@ -40,15 +40,14 @@
                                        todos))])))
 
 
-;; Wrap our login form in a stage/scene, and create a "stage" function
 (defui Stage
        (render [this args]
-               (ui/stage
-                 :title "ToDos"
-                 :min-height 600
-                 :shown true
-                 :scene (ui/scene
-                          :root (main-window args)))))
+         (ui/stage
+           :title "ToDos"
+           :min-height 600
+           :shown true
+           :scene (ui/scene
+                    :root (main-window args)))))
 
 (defmulti handle-event (fn [state event]
                           (:event event)))

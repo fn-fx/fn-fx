@@ -11,7 +11,7 @@
 
 ;; This file generates the resources method-arg-fino.edn file needed
 ;; during the generation of controls.clj, It basically logs the argument
-;; names of value types methods.
+;; names of values
 
 
 (JFXPanel.)
@@ -30,7 +30,7 @@
     (str this)))
 
 
-(defn index-method-args [val-types]
+(defn index-method-args []
   (println "Indexing JavaFX Source...")
   (println "WARNING! THIS SHOULD NOT HAPPEN DURING NORMAL FN(FX) USAGE.")
   (->> (file-seq (File. "/Users/tim/tmp/javafx"))
@@ -47,8 +47,7 @@
                    (for [mem (.getMembers ft)]
                      #_(println mem)
                      (when (and (or (instance? MethodDeclaration mem)
-                                    (instance? ConstructorDeclaration mem))
-                                (val-types (.getName ft)))
+                                    (instance? ConstructorDeclaration mem)))
                        {:type   (.getName ft)
                         :method (.getName mem)
                         :params (for [param (.getParameters mem)]
@@ -58,33 +57,15 @@
                                                    "Object"
                                                    tp))})}))))
                (remove nil?)
-               vec)
+               vec))))
        (reduce
          (fn [acc {:keys [type method params]}]
            (assoc acc [type method (mapv :param-type params)] (mapv :param-name params)))
          {})))
 
-         (time )
-
-         (def all-javafx-types
-           (->> (map #(Class/forName %) (.getAllTypes (Reflections. "javafx" (into-array Scanner [(SubTypesScanner. false)]))))
-                (concat (.getSubTypesOf (Reflections. "javafx" (into-array Scanner [(SubTypesScanner. false)])) Enum))
-                (remove #(.isInterface ^Class %))
-                (remove #(str/includes? (.getName ^Class %) "$"))
-                (remove #(str/ends-with? (.getName ^Class %) "Builder"))
-                (remove #(str/ends-with? (.getName ^Class %) "Property"))
-                (remove #(str/ends-with? (.getName ^Class %) "Base"))
-                (remove #(Modifier/isAbstract (.getModifiers ^Class %)))
-                (filter #(Modifier/isPublic (.getModifiers ^Class %)))
-                set))
-
 (defn -main []
-  (let [val-names (set (map
-                         (fn [^Class tp]
-                           (last (str/split (.getName tp) #"\.")))
-                         ru/value-types))]
-    (spit "resources/method-arg-info.edn"
-          (pr-str (index-method-args val-names)))))
+  (spit "resources/method-arg-info.edn"
+        (pr-str (index-method-args))))
 
 (comment
 

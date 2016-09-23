@@ -4,41 +4,40 @@
             [fn-fx.util :refer [run-and-wait run-later]])
   (:import (java.util List)))
 
-
+(defn unwrap-promise [v]
+  (if (instance? clojure.lang.IBlockingDeref v)
+    @v
+    v))
 
 (deftype FXDom [handler-fn]
   IDom
   (create-component! [this type]
-    (run-and-wait
-      (binding [render-core/*handler-fn* handler-fn]
-        (render-core/construct-control type))))
+    (let [p (promise)]
+      (run-later
+        (binding [render-core/*handler-fn* handler-fn]
+          (p (render-core/construct-control type))))
+      p))
 
   (set-property! [this node property value]
-    (println "SET PROPERTY " node property value)
-    (run-and-wait
+    (run-later
       (binding [render-core/*handler-fn* handler-fn]
-        (render-core/set-property node property value))))
+        (render-core/set-property (unwrap-promise node) property (unwrap-promise value)))))
 
   (set-child! [this parent k child]
-    (println "Child " parent k child)
-    (run-and-wait
-      (render-core/set-property parent k child)))
+    (run-later
+      (render-core/set-property (unwrap-promise parent) k (unwrap-promise child))))
 
   (set-indexed-child! [this parent k idx child]
-    (run-and-wait
-      (println "Set child")
-      (let [^List lst (render-core/get-property parent k)]
+    (run-later
+      (let [^List lst (render-core/get-property (unwrap-promise parent) k)]
         (assert (= idx (count lst)) "TODO: Implement this")
-        (.add lst child))))
+        (.add lst (unwrap-promise child)))))
 
   (delete-indexed-child! [this parent k idx child]
-    (run-and-wait
-      (let [^List lst (render-core/get-property parent k)]
-        (println "Removing " parent k idx)
-        (println "LST " k parent (ancestors (type lst)) (count lst) idx)
+    (run-later
+      (let [^List lst (render-core/get-property (unwrap-promise parent) k)]
         (assert (= idx (dec (count lst))) "TODO: Implement this")
-        (.remove lst ^int idx)
-        (println "AFTER" (count lst)))))
+        (.remove lst ^int idx))))
   (delete-component! [this node]
     nil))
 

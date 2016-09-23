@@ -23,22 +23,46 @@
 (defmulti set-property (fn [control prop val]
                          [(type control) prop]))
 
+(defmulti convert-value (fn [from to-type]
+                          [(type from) to-type]))
+
 
 (deftype DefaultValue [])
 (def default-value (->DefaultValue))
 
 (def ^:dynamic *handler-fn*)
-
-(defmulti construct-control identity)
+(def construct-control nil)
+(defmulti construct-control (fn [type]
+                              (if (keyword? type)
+                                type
+                                (let [[tp args] type]
+                                  [tp args]))))
 
 (defmethod construct-control :default
   [tp-kw]
-  (let [class (Class/forName (name tp-kw))
-        f (ctor-fn class)]
-    (defmethod construct-control tp-kw
-      [_]
+  (if (keyword? tp-kw)
+    (let [class (Class/forName (name tp-kw))
+          f     (ctor-fn class)]
+      (defmethod construct-control tp-kw
+        [_]
+        (f))
       (f))
-    (f)))
+    (let [[tp arg-names arg-vals] tp-kw
+          class (Class/forName (name tp))
+          {:keys [^Constructor method]} (->> (ru/get-value-ctors class)
+                                (filter
+                                  (fn [{:keys [prop-names-kw is-ctor?]}]
+                                    (and (= prop-names-kw arg-names)
+                                         is-ctor?)))
+                                first)
+          _ (assert method (str "No Ctor found for " tp " " arg-names))
+          param-types (map #(.getType ^Parameter %)
+                           (.getParameters method))]
+      (defmethod construct-control [tp arg-names]
+        [[_ _ vals]]
+        (let [arr (to-array (map convert-value vals param-types))]
+          (.newInstance method arr)))
+      (construct-control tp-kw))))
 
 (defn set-properties [object properties]
   (reduce-kv
@@ -65,8 +89,7 @@
 (defn get-property [this kw]
   ((get-getter (type this) kw) this))
 
-(defmulti convert-value (fn [from to-type]
-                          [(type from) to-type]))
+
 
 (defmethod convert-value :default
   [value ^Class tp]
@@ -86,10 +109,25 @@
 
 (alter-var-root #'class-for-name memoize)
 
-(defn component-impl [type args]
-  `(diff/component
-     ~type
-     ~args))
+(defn component-impl [type args static-props]
+  (let [p (select-keys args static-props)
+        unsorted-kw-args (set (keys p))
+        arg-kws (->> (ru/get-value-ctors (Class/forName (name type)))
+                     (sort-by #(count (:prop-names-kw %)))
+                     (filter
+                       (fn [{:keys [prop-names-kw]}]
+                         (every? (set prop-names-kw) unsorted-kw-args)))
+                     (map :prop-names-kw)
+                     first)
+        _ (when (seq p)
+            (assert arg-kws (str "No constructor with static args for " unsorted-kw-args)))]
+
+    `(diff/component
+       ~(if (seq p)
+          [type arg-kws (mapv (fn [v]
+                                (get p v `default-value)) arg-kws)]
+          type)
+       ~(not-empty (apply dissoc args unsorted-kw-args)))))
 
 
 (defrecord Value [class-name args f])
@@ -240,19 +278,20 @@
     (reify EventHandler
       (^void handle [this ^Event event]
         (future
-          (let [includes (time (reduce-kv
-                                 (fn [acc id props]
-                                   (println "Looking for " id props)
-                                   (if-let [node (tree-search/find-nearest-by-id (.getTarget event) (str id))]
-                                     (assoc acc id
-                                                (reduce
-                                                  (fn [acc prop]
-                                                    (assoc acc prop (get-property node prop)))
-                                                  {}
-                                                  props))
-                                     acc))
-                                 {}
-                                 include))]
+          (let [includes (reduce-kv
+                              (fn [acc id props]
+                                (if-let [node (if (= id :fn-fx/event)
+                                                event
+                                                (tree-search/find-nearest-by-id (.getTarget event) (str id)))]
+                                  (assoc acc id
+                                             (reduce
+                                               (fn [acc prop]
+                                                 (assoc acc prop (get-property node prop)))
+                                               {}
+                                               props))
+                                  acc))
+                              {}
+                              include)]
             (handler-fn (assoc template
                           :fn-fx/includes includes))
             nil))))))
