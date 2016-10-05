@@ -24,7 +24,9 @@
 (defui MainWindow
        (render [this {:keys [todos]}]
           (ui/v-box
-           :padding (ui/insets
+            :style "-fx-base: rgb(30, 30, 35);"
+
+            :padding (ui/insets
 
                      :top-right-bottom-left 25)
            :children [(ui/text-field
@@ -45,6 +47,7 @@
          (ui/stage
            :title "ToDos"
            :min-height 600
+           :listen/height {:event :height-change}
            :shown true
            :scene (ui/scene
                     :root (main-window args)))))
@@ -68,6 +71,12 @@
   [state {:keys [fn-fx/includes]}]
   (update-in state [:todos] conj {:done? false
                                   :text (get-in includes [::new-item :text])}))
+
+(defmethod handle-event :default
+  [state event]
+  (println "No hander for event " (:type event) event))
+
+
 
 (defn -main []
   (let [;; Data State holds the business logic of our app

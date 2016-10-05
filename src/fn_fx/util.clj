@@ -8,7 +8,11 @@
   (Platform/runLater fn))
 
 (defmacro run-later [& body]
-  `(-run-later (fn [] ~@body)))
+  `(-run-later
+     (fn []
+       (try ~@body
+            (catch Throwable ex#
+              (println ex#))))))
 
 (defrecord WrappedException [ex])
 (defn wrapped-exception? [o]
@@ -46,3 +50,7 @@
     (apply str (interpose "-" (map string/lower-case s)))))
 
 (alter-var-root #'camel->kabob memoize)
+
+(defn upper->kabob [from]
+  (let [s (string/split (name from) #"\_")]
+    (apply str (interpose "-" (map string/lower-case s)))))

@@ -9,7 +9,10 @@
            (java.lang.reflect Constructor Method Parameter Modifier)
            (javafx.scene.layout StackPane VBox)
            (javafx.event EventHandler Event)
-           (java.io Writer)))
+           (java.io Writer)
+           (javafx.beans.value ObservableValue)
+           (java.util WeakHashMap)
+           (javafx.beans.value ChangeListener)))
 
 (set! *warn-on-reflection* true)
 
@@ -19,6 +22,7 @@
 (declare get-setter)
 (declare get-getter)
 (declare get-static-setter)
+(declare get-add-listener)
 
 (defmulti set-property (fn [control prop val]
                          [(type control) prop]))
@@ -60,8 +64,15 @@
                            (.getParameters method))]
       (defmethod construct-control [tp arg-names]
         [[_ _ vals]]
-        (let [arr (to-array (map convert-value vals param-types))]
-          (.newInstance method arr)))
+        (try
+          (let [arr (to-array (map convert-value vals param-types))]
+            (.newInstance method arr))
+          (catch Throwable ex
+            (throw (ex-info "Error constructing control"
+                            {:ex ex
+                             :type tp
+                             :arg-names arg-names
+                             :vals vals})))))
       (construct-control tp-kw))))
 
 (defn set-properties [object properties]
@@ -77,7 +88,9 @@
 (defmethod set-property :default
   [this prop val]
   (let [set-fn (if (namespace prop)
-                 (get-static-setter prop)
+                 (if (= (namespace prop) "listen")
+                   (get-add-listener (type this) prop)
+                   (get-static-setter prop))
                  (get-setter (type this) prop))]
 
     (defmethod set-property [(type this) prop]
@@ -90,11 +103,29 @@
   ((get-getter (type this) kw) this))
 
 
+(defn register-keyword-conv [^Class tp]
+  (let [values (->> (for [f (.getDeclaredFields tp)
+                          :when (Modifier/isPublic (.getModifiers f))
+                          :when (Modifier/isStatic (.getModifiers f))
+                          :when (= tp (.getType f))]
+                      [(keyword (util/upper->kabob (.getName f))) (.get f nil)])
+                    (into {}))]
+    (defmethod convert-value [clojure.lang.Keyword tp]
+      [val _]
+      (let [r (get values val ::not-found)]
+        (assert (not= r ::not-found)
+                (str "No converter for keyword " val " to type " tp))
+        r))
+    values))
 
 (defmethod convert-value :default
   [value ^Class tp]
-  (assert (.isAssignableFrom tp (type value)) (str "Can't convert " (pr-str value) " of type " (type value)  " to " tp))
-  value)
+  (if (not (.isAssignableFrom tp (type value)))
+    (if (keyword? value)
+      (do (register-keyword-conv tp)
+          (convert-value value tp))
+      (assert (.isAssignableFrom tp (type value)) (str "Can't convert " (pr-str value) " of type " (type value) " to " tp))))
+    value)
 
 (defmethod convert-value
   [java.lang.Long Double/TYPE]
@@ -208,6 +239,7 @@
                     (fn [^Class klass]
                       (str/ends-with? (.getName klass) (str "." (util/kabob->class (namespace prop))))))
                   first)
+        _ (assert klass (str "Couldn't find class for static property " prop))
         ^Method method (->> (.getMethods klass)
                     (filter
                       (fn [^Method m]
@@ -222,6 +254,32 @@
         (aset arr 0 inst)
         (aset arr 1 (convert-value val to-type))
         (.invoke method inst arr)))))
+
+(def ^WeakHashMap listener-map (WeakHashMap.))
+
+(defn get-listeners [^WeakHashMap mp inst]
+  (if (.containsKey mp inst)
+    (.get mp inst)
+    (let [listeners (volatile! {})]
+      (.put mp inst listeners)
+      listeners)))
+
+(defn get-add-listener [^Class class prop]
+  (let [prop-name (str (util/kabob->camel (name prop)) "Property")
+        empty-array (make-array Class 0)
+        prop      (.getMethod class prop-name empty-array)]
+    (fn [inst val]
+      (let [^ObservableValue ob (.invoke ^Method prop inst empty-array)
+            listeners (get-listeners listener-map inst)
+            handler-fn *handler-fn*
+            listener (reify ChangeListener
+                       (^void changed [this ^ObservableValue ob old new]
+                         (handler-fn (assoc val :fn-fx/listen-new new
+                                                :fn-fx/listen-old old))))]
+        (when-let [old (get @listeners prop)]
+          (.removeListener ob old))
+        (vswap! listeners assoc prop listener)
+        (.addListener ob listener)))))
 
 (defn get-getter [^Class klass prop]
   (let [prop-name      (str "get" (util/kabob->class (name prop)))
@@ -271,6 +329,11 @@
 (defmethod convert-value [DefaultValue javafx.scene.Parent]
   [_ _]
   (javafx.scene.layout.VBox.))
+
+(defmethod convert-value [DefaultValue Double/TYPE]
+  [_ _]
+  0.0)
+
 
 (defmethod convert-value [clojure.lang.ILookup EventHandler]
   [{:keys [fn-fx/include] :as template} _]
