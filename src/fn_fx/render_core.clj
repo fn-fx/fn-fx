@@ -6,13 +6,14 @@
             [clojure.string :as str])
   (:import (javafx.embed.swing JFXPanel)
            (javax.swing JFrame)
-           (java.lang.reflect Constructor Method Parameter Modifier)
+           (java.lang.reflect Constructor Method Parameter Modifier Field)
            (javafx.scene.layout StackPane VBox)
            (javafx.event EventHandler Event)
            (java.io Writer)
            (javafx.beans.value ObservableValue)
            (java.util WeakHashMap)
-           (javafx.beans.value ChangeListener)))
+           (javafx.beans.value ChangeListener)
+           (javafx.stage Window)))
 
 (set! *warn-on-reflection* true)
 
@@ -104,7 +105,7 @@
 
 
 (defn register-keyword-conv [^Class tp]
-  (let [values (->> (for [f (.getDeclaredFields tp)
+  (let [values (->> (for [^Field f (.getDeclaredFields tp)
                           :when (Modifier/isPublic (.getModifiers f))
                           :when (Modifier/isStatic (.getModifiers f))
                           :when (= tp (.getType f))]
@@ -277,7 +278,7 @@
                          (handler-fn (assoc val :fn-fx/listen-new new
                                                 :fn-fx/listen-old old))))]
         (when-let [old (get @listeners prop)]
-          (.removeListener ob old))
+          (.removeListener ob ^ChangeListener old))
         (vswap! listeners assoc prop listener)
         (.addListener ob listener)))))
 
@@ -317,12 +318,17 @@
 
 ;; Helpers
 
-(defmethod set-property [javafx.stage.Window :shown]
-  [^javafx.stage.Window w _ val]
-  (if val
-    ;; Reflection here, but this method is protected so what can we do?
-    (.show w)
-    (.hide w)))
+(let [^Method show-method (->> (.getDeclaredMethods Window)
+                               (filter #(= "show" (.getName ^Method %)))
+                               first)
+      empty-array         (make-array Object 0)]
+  ;; Reflection here, but this method is protected so what can we do?
+  (.setAccessible show-method true)
+  (defmethod set-property [javafx.stage.Window :shown]
+    [^javafx.stage.Window w _ val]
+    (if val
+      (.invoke show-method w empty-array)
+      (.hide w))))
 
 ;; Value Converters
 

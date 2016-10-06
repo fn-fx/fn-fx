@@ -51,11 +51,11 @@
                              (:require [fn-fx.render-core :as render-core]
                                        [fn-fx.diff :as diff]))
                            `(set! *warn-on-reflection* true)])]
-    (doseq [vt ru/value-types]
+    (doseq [vt @ru/value-types]
       (println "Emitting Value Type:" vt)
       (gen-value-ctor vt))
 
-    (doseq [klass ru/control-types]
+    (doseq [klass @ru/control-types]
       (println "Emit control builder:" klass)
       (gen-control-ctor klass))
 

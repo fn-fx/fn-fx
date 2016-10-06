@@ -5,16 +5,12 @@
             [clojure.edn :as edn]
             [clojure.java.io :as io])
   (:import (javafx.embed.swing JFXPanel)
-           (javax.swing JFrame)
-           (javafx.application Application)
            (java.io FileInputStream File InputStream)
            (java.lang.reflect Method Executable)
            (javafx.embed.swing JFXPanel)
            (org.reflections Reflections)
            (java.lang.reflect Constructor Parameter Modifier ParameterizedType)
            (org.reflections.scanners SubTypesScanner Scanner)
-           (javafx.beans Observable)
-           (javafx.beans.value WritableValue)
            (javafx.beans.binding ObjectExpression BooleanExpression LongExpression DoubleExpression)
            (javafx.event EventHandler Event)))
 
@@ -92,34 +88,36 @@
 
 ;; All the JavaFX components (classes with properties)
 (def control-types
-  (->> all-javafx-types
-       (filter
-         (fn [t]
-           (pos? (count (class-properties t)))))
-       (filter
-         (fn [^Class t]
-           (->> (.getMethods t)
-                (filter
-                  #(str/starts-with? (.getName ^Method %) "set"))
-                count
-                pos?)))
-       set))
+  (delay
+    (->> all-javafx-types
+         (filter
+           (fn [t]
+             (pos? (count (class-properties t)))))
+         (filter
+           (fn [^Class t]
+             (->> (.getMethods t)
+                  (filter
+                    #(str/starts-with? (.getName ^Method %) "set"))
+                  count
+                  pos?)))
+         set)))
 
 
 ;; All the JavaFX value types (classes with no properties)
 (def value-types
-  (->> all-javafx-types
-       (remove
-         (fn [^Class t]
-           (.isEnum t)))
-       (remove
-         (fn [^Class t]
-           (->> (.getMethods t)
-                (filter
-                  #(str/starts-with? (.getName ^Method %) "set"))
-                count
-                pos?)))
-       set))
+  (delay
+    (->> all-javafx-types
+         (remove
+           (fn [^Class t]
+             (.isEnum t)))
+         (remove
+           (fn [^Class t]
+             (->> (.getMethods t)
+                  (filter
+                    #(str/starts-with? (.getName ^Method %) "set"))
+                  count
+                  pos?)))
+         set)))
 
 
 (defn static-method-ctors [^Class k]

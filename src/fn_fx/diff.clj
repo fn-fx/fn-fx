@@ -1,6 +1,5 @@
 (ns fn-fx.diff
-  (:require [clojure.core.match :refer [match]]
-            [fn-fx.set-once-type :refer [defquasitype set-once!]]
+  (:require [fn-fx.set-once-type :refer [defquasitype set-once!]]
             [fn-fx.util :as util]))
 
 (declare diff)
@@ -85,7 +84,7 @@
     spec-b))
 
 (defn diff [dom a b]
-  (match [(val-type a) (val-type b)]
+  (condp = [(val-type a) (val-type b)]
     [:nil :comp] (let [node (create-component! dom (:type b))]
                    (assert node "No Node returned by create-component!")
                    (set-once! b :dom-node node)
