@@ -47,7 +47,8 @@
          (ui/stage
            :title "ToDos"
            :min-height 600
-           :listen/height {:event :height-change}
+           :listen/height {:event :height-change
+                           :fn-fx/include {::new-item #{:text}}}
            :shown true
            :scene (ui/scene
                     :root (main-window args)))))
@@ -74,7 +75,8 @@
 
 (defmethod handle-event :default
   [state event]
-  (println "No hander for event " (:type event) event))
+  (println "No hander for event " (:type event) event)
+  state)
 
 
 

@@ -53,14 +53,14 @@
         (f))
       (f))
     (let [[tp arg-names arg-vals] tp-kw
-          class (Class/forName (name tp))
+          class       (Class/forName (name tp))
           {:keys [^Constructor method]} (->> (ru/get-value-ctors class)
-                                (filter
-                                  (fn [{:keys [prop-names-kw is-ctor?]}]
-                                    (and (= prop-names-kw arg-names)
-                                         is-ctor?)))
-                                first)
-          _ (assert method (str "No Ctor found for " tp " " arg-names))
+                                             (filter
+                                               (fn [{:keys [prop-names-kw is-ctor?]}]
+                                                 (and (= prop-names-kw arg-names)
+                                                      is-ctor?)))
+                                             first)
+          _           (assert method (str "No Ctor found for " tp " " arg-names))
           param-types (map #(.getType ^Parameter %)
                            (.getParameters method))]
       (defmethod construct-control [tp arg-names]
@@ -70,10 +70,10 @@
             (.newInstance method arr))
           (catch Throwable ex
             (throw (ex-info "Error constructing control"
-                            {:ex ex
-                             :type tp
+                            {:ex        ex
+                             :type      tp
                              :arg-names arg-names
-                             :vals vals})))))
+                             :vals      vals})))))
       (construct-control tp-kw))))
 
 (defn set-properties [object properties]
@@ -126,7 +126,7 @@
       (do (register-keyword-conv tp)
           (convert-value value tp))
       (assert (.isAssignableFrom tp (type value)) (str "Can't convert " (pr-str value) " of type " (type value) " to " tp))))
-    value)
+  value)
 
 (defmethod convert-value
   [java.lang.Long Double/TYPE]
@@ -142,17 +142,17 @@
 (alter-var-root #'class-for-name memoize)
 
 (defn component-impl [type args static-props]
-  (let [p (select-keys args static-props)
+  (let [p                (select-keys args static-props)
         unsorted-kw-args (set (keys p))
-        arg-kws (->> (ru/get-value-ctors (Class/forName (name type)))
-                     (sort-by #(count (:prop-names-kw %)))
-                     (filter
-                       (fn [{:keys [prop-names-kw]}]
-                         (every? (set prop-names-kw) unsorted-kw-args)))
-                     (map :prop-names-kw)
-                     first)
-        _ (when (seq p)
-            (assert arg-kws (str "No constructor with static args for " unsorted-kw-args)))]
+        arg-kws          (->> (ru/get-value-ctors (Class/forName (name type)))
+                              (sort-by #(count (:prop-names-kw %)))
+                              (filter
+                                (fn [{:keys [prop-names-kw]}]
+                                  (every? (set prop-names-kw) unsorted-kw-args)))
+                              (map :prop-names-kw)
+                              first)
+        _                (when (seq p)
+                           (assert arg-kws (str "No constructor with static args for " unsorted-kw-args)))]
 
     `(diff/component
        ~(if (seq p)
@@ -173,13 +173,13 @@
                  (if is-ctor?
                    (fn [args]
                      (let [^objects casted (into-array Object (map convert-value
-                                                                args
-                                                                prop-types))]
+                                                                   args
+                                                                   prop-types))]
                        (.newInstance ^Constructor method casted)))
                    (fn [args]
                      (let [^objects casted (into-array Object (map convert-value
-                                                           args
-                                                           prop-types))]
+                                                                   args
+                                                                   prop-types))]
                        (.invoke ^Method method nil casted)))
                    )])]
 
@@ -194,7 +194,7 @@
 
 
 (defn value-type-impl [type args]
-  (let [ctors (get-value-ctors type)
+  (let [ctors    (get-value-ctors type)
         args-set (set (keys args))
         selected (->> ctors
                       (keep
@@ -211,7 +211,7 @@
   (let [^Constructor ctor (->> (.getDeclaredConstructors k)
                                (sort-by #(count (.getParameters ^Constructor %)))
                                first)
-        _ (assert ctor (str "No ctor for class " k))]
+        _                 (assert ctor (str "No ctor for class " k))]
     (.setAccessible ctor true)
     (fn []
       (let [^objects arr (into-array Object (map
@@ -226,7 +226,7 @@
                             (filter #(= prop-name (.getName ^Method %)))
                             (filter #(= 1 (count (.getParameters ^Method %))))
                             first)
-        _ (assert method (str "No property " prop " on type " klass))
+        _              (assert method (str "No property " prop " on type " klass))
         to-type        (.getType ^Parameter (first (.getParameters method)))]
     (.setAccessible method true)
     (fn [inst val]
@@ -235,20 +235,20 @@
         (.invoke method inst arr)))))
 
 (defn get-static-setter [prop]
-  (let [^Class klass (->> ru/all-javafx-types
-                  (filter
-                    (fn [^Class klass]
-                      (str/ends-with? (.getName klass) (str "." (util/kabob->class (namespace prop))))))
-                  first)
-        _ (assert klass (str "Couldn't find class for static property " prop))
+  (let [^Class klass   (->> ru/all-javafx-types
+                            (filter
+                              (fn [^Class klass]
+                                (str/ends-with? (.getName klass) (str "." (util/kabob->class (namespace prop))))))
+                            first)
+        _              (assert klass (str "Couldn't find class for static property " prop))
         ^Method method (->> (.getMethods klass)
-                    (filter
-                      (fn [^Method m]
-                        (and (= (.getName m) (str "set" (util/kabob->class (name prop))))
-                             (Modifier/isStatic (.getModifiers m))
-                             (= (.getParameterCount m) 2))))
-                    first)
-        to-type (.getType ^Parameter (second (.getParameters method)))]
+                            (filter
+                              (fn [^Method m]
+                                (and (= (.getName m) (str "set" (util/kabob->class (name prop))))
+                                     (Modifier/isStatic (.getModifiers m))
+                                     (= (.getParameterCount m) 2))))
+                            first)
+        to-type        (.getType ^Parameter (second (.getParameters method)))]
     (.setAccessible method true)
     (fn [inst val]
       (let [^objects arr (make-array Object 2)]
@@ -265,18 +265,40 @@
       (.put mp inst listeners)
       listeners)))
 
+(defn gather-event-data
+  "Given an instance object and and event, gather information from the template's
+  include specs and add them to the template."
+  [inst event {:keys [fn-fx/include] :as template}]
+  (assoc template
+    :fn-fx/includes
+    (reduce-kv
+      (fn [acc id props]
+        (if-let [node (if (= id :fn-fx/event)
+                        event
+                        (tree-search/find-nearest-by-id inst (str id)))]
+          (assoc acc id
+                     (reduce
+                       (fn [acc prop]
+                         (assoc acc prop (get-property node prop)))
+                       {}
+                       props))
+          acc))
+      {}
+      include)))
+
 (defn get-add-listener [^Class class prop]
-  (let [prop-name (str (util/kabob->camel (name prop)) "Property")
+  (let [prop-name   (str (util/kabob->camel (name prop)) "Property")
         empty-array (make-array Class 0)
-        prop      (.getMethod class prop-name empty-array)]
+        prop        (.getMethod class prop-name empty-array)]
     (fn [inst val]
       (let [^ObservableValue ob (.invoke ^Method prop inst empty-array)
-            listeners (get-listeners listener-map inst)
-            handler-fn *handler-fn*
-            listener (reify ChangeListener
-                       (^void changed [this ^ObservableValue ob old new]
-                         (handler-fn (assoc val :fn-fx/listen-new new
-                                                :fn-fx/listen-old old))))]
+            listeners           (get-listeners listener-map inst)
+            handler-fn          *handler-fn*
+            listener            (reify ChangeListener
+                                  (^void changed [this ^ObservableValue ob old new]
+                                    (let [val (gather-event-data inst ob val)]
+                                      (handler-fn (assoc val :fn-fx.listen/new new
+                                                             :fn-fx.listen/old old)))))]
         (when-let [old (get @listeners prop)]
           (.removeListener ob ^ChangeListener old))
         (vswap! listeners assoc prop listener)
@@ -286,10 +308,9 @@
   (let [prop-name      (str "get" (util/kabob->class (name prop)))
         ^Method method (->> (.getMethods klass)
                             (filter #(= prop-name (.getName ^Method %)))
-                            (filter #(zero?  (count (.getParameters ^Method %))))
+                            (filter #(zero? (count (.getParameters ^Method %))))
                             first)
-        to-type        (.getReturnType method)
-        arr (make-array Object 0)]
+        arr            (make-array Object 0)]
     (.setAccessible method true)
     (fn [inst]
       (.invoke method inst arr))))
@@ -341,29 +362,15 @@
   0.0)
 
 
+
 (defmethod convert-value [clojure.lang.ILookup EventHandler]
-  [{:keys [fn-fx/include] :as template} _]
+  [template _]
   (let [handler-fn *handler-fn*]
     (reify EventHandler
       (^void handle [this ^Event event]
         (future
-          (let [includes (reduce-kv
-                              (fn [acc id props]
-                                (if-let [node (if (= id :fn-fx/event)
-                                                event
-                                                (tree-search/find-nearest-by-id (.getTarget event) (str id)))]
-                                  (assoc acc id
-                                             (reduce
-                                               (fn [acc prop]
-                                                 (assoc acc prop (get-property node prop)))
-                                               {}
-                                               props))
-                                  acc))
-                              {}
-                              include)]
-            (handler-fn (assoc template
-                          :fn-fx/includes includes))
-            nil))))))
+          (handler-fn (gather-event-data (.getTarget event) event template))
+          nil)))))
 
 (defmethod convert-value [Long Integer]
   [v _]
