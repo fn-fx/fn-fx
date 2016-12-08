@@ -1,4 +1,4 @@
-(defproject fn-fx "0.1.0-SNAPSHOT"
+(defproject fn-fx "0.1.0"
   :description "A declarative wrapper for JavaFX2"
   :url "http://github.com/halgari/fn-fx"
   :license {:name "Eclipse Public License"
