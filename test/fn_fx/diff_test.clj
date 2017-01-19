@@ -92,6 +92,10 @@
                          [:set-property 1 :root 2]]}))))
   )
 
+  (testing "from value to nil"
+    (let [log (log)
+          value :x]
+      (is (= (->Deleted value) (diff log value nil))))))
 
 (deftest component-diffing
   (testing "can change spec values"

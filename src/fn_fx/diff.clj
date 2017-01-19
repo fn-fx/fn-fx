@@ -119,7 +119,9 @@
                     (do (delete-component! dom (:dom-node a))
                         (diff dom nil b)))
 
-    [:comp :nil] (->Deleted (:dom-node a))))
+    [:comp :nil] (->Deleted (:dom-node a))
+
+    [:val :nil] (->Deleted a)))
 
 
 (defn component
