@@ -29,15 +29,21 @@
 
   (set-indexed-child! [this parent k idx child]
     (run-later
-      (let [^List lst (render-core/get-property (unwrap-promise parent) k)]
-        (assert (= idx (count lst)) "TODO: Implement this")
-        (.add lst (unwrap-promise child)))))
+     (let [^List lst (render-core/get-property (unwrap-promise parent) k)]
+       (.add lst idx (unwrap-promise child)))))
 
   (delete-indexed-child! [this parent k idx child]
     (run-later
-      (let [^List lst (render-core/get-property (unwrap-promise parent) k)]
-        (assert (= idx (dec (count lst))) "TODO: Implement this")
-        (.remove lst ^int idx))))
+     (let [^List lst (render-core/get-property (unwrap-promise parent) k)]
+       (.remove lst (unwrap-promise child)))))
+
+  (replace-indexed-child! [this parent k idx new-child]
+    (run-later
+     (let [^List lst (render-core/get-property (unwrap-promise parent) k)]
+       (doto lst
+         (.remove ^int idx)
+         (.add ^int idx (unwrap-promise new-child))))))
+
   (delete-component! [this node]
     nil))
 

@@ -10,6 +10,7 @@
   (set-child! [this parent id child])
   (set-indexed-child! [this parent k idx child])
   (delete-indexed-child! [this parent k idx child])
+  (replace-indexed-child! [this parent k idx child])
   (set-property! [this node property value]))
 
 (defquasitype Component [type dom-node props])
@@ -57,7 +58,7 @@
           ;; TODO: Unmount?
           Created (set-indexed-child! dom parent-node k idx node)
           Deleted (delete-indexed-child! dom parent-node k idx node)
-          Updated nil
+          Updated (replace-indexed-child! dom parent-node k idx node)
           Noop nil)))))
 
 (defn diff-component [dom dom-node spec-a spec-b]
@@ -93,7 +94,7 @@
 
     [:val :val] (if (= a b)
                   (->Noop b)
-                  (->Created b))
+                  (->Updated b))
 
     [:nil :val] (->Created b)
 
