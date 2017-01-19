@@ -68,7 +68,8 @@
         (if (sequential? vb)
           (diff-child-list dom dom-node k va vb)
           (let [result (diff dom va vb)]
-            (if (instance? Created result)
+            (if (or (instance? Created result)
+                    (instance? Updated result))
               (set-property! dom dom-node k (:node result)))))))
     nil
     spec-a)
@@ -79,7 +80,8 @@
         (if (sequential? vb)
           (diff-child-list dom dom-node k nil vb)
           (let [result (diff dom nil vb)]
-            (if (instance? Created result)
+            (if (or (instance? Created result)
+                    (instance? Updated result))
               (set-property! dom dom-node k (:node result)))))))
     nil
     spec-b))
