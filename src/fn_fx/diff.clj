@@ -6,7 +6,7 @@
 
 (defprotocol IDom
   (create-component! [this type])
-  (delete-component! [this node])
+  (delete-component! [this k child])
   (set-child! [this parent id child])
   (set-indexed-child! [this parent k idx child])
   (delete-indexed-child! [this parent k idx child])
@@ -53,7 +53,7 @@
   (dotimes [idx (max (count a-list) (count b-list))]
     (let [a (nth a-list idx nil)
           b (nth b-list idx nil)]
-      (let [{:keys [node] :as result} (diff dom a b)]
+      (let [{:keys [node] :as result} (diff dom k a b)]
         (condp instance? result
           ;; TODO: Unmount?
           Created (set-indexed-child! dom parent-node k idx node)
@@ -67,7 +67,7 @@
       (let [vb (get spec-b k)]
         (if (sequential? vb)
           (diff-child-list dom dom-node k va vb)
-          (let [result (diff dom va vb)]
+          (let [result (diff dom k va vb)]
             (if (or (instance? Created result)
                     (instance? Updated result))
               (set-property! dom dom-node k (:node result)))))))
@@ -79,52 +79,52 @@
       (when-not (get spec-a k)
         (if (sequential? vb)
           (diff-child-list dom dom-node k nil vb)
-          (let [result (diff dom nil vb)]
+          (let [result (diff dom k nil vb)]
             (if (or (instance? Created result)
                     (instance? Updated result))
               (set-property! dom dom-node k (:node result)))))))
     nil
     spec-b))
 
-(defn diff [dom a b]
-  (condp = [(val-type a) (val-type b)]
-    [:nil :comp] (let [node (create-component! dom (:type b))]
-                   (assert node "No Node returned by create-component!")
-                   (set-once! b :dom-node node)
-                   (diff-component dom node nil (:props b))
-                   (->Created node))
+(defn diff
+  ([dom a b]
+   (diff dom nil a b))
+  ([dom k a b]
+   (let [refresh-node (fn [node compo-a compo-b]
+                        (set-once! compo-b :dom-node node)
+                        (diff-component dom node (:props compo-a) (:props compo-b))
+                        node)
+         new-node (fn [compo]
+                    (let [node (create-component! dom (:type compo))]
+                      (assert node "No Node returned by create-component!")
+                      (refresh-node node nil compo)))]
+     (condp = [(val-type a) (val-type b)]
+       [:nil :comp] (->Created (new-node b))
 
-    [:val :val] (if (= a b)
-                  (->Noop b)
-                  (->Updated b))
+       [:val :val] (if (= a b)
+                     (->Noop b)
+                     (->Updated b))
 
-    [:nil :val] (->Created b)
+       [:nil :val] (->Created b)
 
-    [:nil :ucomp] (diff dom nil (render-user-component b))
+       [:nil :ucomp] (diff dom nil (render-user-component b))
 
-    [:ucomp :nil] (diff dom (render-user-component a) nil)
+       [:ucomp :nil] (diff dom (render-user-component a) nil)
 
-    [:ucomp :ucomp] (if (needs-update? a b)
-                      (diff dom (render-user-component a) (render-user-component b))
-                      (->Noop (:dom-node (:render-result b))))
+       [:ucomp :ucomp] (if (needs-update? a b)
+                         (diff dom k (render-user-component a) (render-user-component b))
+                         (->Noop (:dom-node (:render-result b))))
 
-    [:comp :comp] (if (= (:type a) (:type b))
-                    (let [spec-a   (:props a)
-                          spec-b   (:props b)
-                          dom-node (:dom-node a)]
-                      (assert dom-node (str "No DOM Node" (pr-str a)))
-                      (set-once! b :dom-node dom-node)
+       [:comp :comp] (-> (if (= (:type a) (:type b))
+                           (doto (:dom-node a)
+                             (assert (str "No DOM Node" (pr-str a)))
+                             (refresh-node a b))
+                           (new-node b))
+                         ->Updated)
 
-                      (diff-component dom dom-node spec-a spec-b)
+       [:comp :nil] (->Deleted (:dom-node a))
 
-
-                      (->Updated dom-node))
-                    (do (delete-component! dom (:dom-node a))
-                        (diff dom nil b)))
-
-    [:comp :nil] (->Deleted (:dom-node a))
-
-    [:val :nil] (->Deleted a)))
+       [:val :nil] (->Deleted a)))))
 
 
 (defn component

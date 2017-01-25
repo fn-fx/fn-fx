@@ -44,11 +44,12 @@
          (.remove ^int idx)
          (.add ^int idx (unwrap-promise new-child))))))
 
-  (delete-component! [this node]
-    nil))
-
-
-
+  (delete-component! [this k child]
+    (run-later
+     (let [node (unwrap-promise child)
+           parent (unwrap-promise (.getParent node))
+           ^List lst (render-core/get-property parent k)]
+       (.remove lst node)))))
 
 (defrecord App [prev-state dom root handler-fn])
 
@@ -57,7 +58,7 @@
 
 (defn app
   ([init-state]
-    (app init-state default-handler-fn))
+   (app init-state default-handler-fn))
   ([init-state default-handler-fn]
    (let [dom  (->FXDom default-handler-fn)
          root (:node (diff dom nil init-state))]
