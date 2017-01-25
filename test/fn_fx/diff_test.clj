@@ -25,8 +25,8 @@
   (delete-indexed-child! [this parent k idx child]
     (swap! this update-in [:log] conj [:delete-indexed-child parent k idx child]))
 
-  (replace-indexed-child! [this parent k idx new-child]
-    (swap! this update-in [:log] conj [:replace-indexed-child parent k idx new-child])))
+  (replace-indexed-child! [this parent k idx child]
+    (swap! this update-in [:log] conj [:replace-indexed-child parent k idx child])))
 
 
 (defn log []
