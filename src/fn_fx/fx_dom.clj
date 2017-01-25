@@ -42,14 +42,7 @@
      (let [^List lst (render-core/get-property (unwrap-promise parent) k)]
        (doto lst
          (.remove ^int idx)
-         (.add ^int idx (unwrap-promise new-child))))))
-
-  (delete-component! [this k child]
-    (run-later
-     (let [node (unwrap-promise child)
-           parent (unwrap-promise (.getParent node))
-           ^List lst (render-core/get-property parent k)]
-       (.remove lst node)))))
+         (.add ^int idx (unwrap-promise new-child)))))))
 
 (defrecord App [prev-state dom root handler-fn])
 
@@ -68,5 +61,3 @@
 (defn update-app [{:keys [prev-state dom root handler-fn]} new-state]
   (let [new-node (:node (time (diff dom prev-state new-state)))]
     (->App new-state dom new-node handler-fn)))
-
-
