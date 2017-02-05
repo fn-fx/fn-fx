@@ -29,20 +29,20 @@
 
   (set-indexed-child! [this parent k idx child]
     (run-later
-      (let [^List lst (render-core/get-property (unwrap-promise parent) k)]
-        (assert (= idx (count lst)) "TODO: Implement this")
-        (.add lst (unwrap-promise child)))))
+     (let [^List lst (render-core/get-property (unwrap-promise parent) k)]
+       (.add lst idx (unwrap-promise child)))))
 
   (delete-indexed-child! [this parent k idx child]
     (run-later
-      (let [^List lst (render-core/get-property (unwrap-promise parent) k)]
-        (assert (= idx (dec (count lst))) "TODO: Implement this")
-        (.remove lst ^int idx))))
-  (delete-component! [this node]
-    nil))
+     (let [^List lst (render-core/get-property (unwrap-promise parent) k)]
+       (.remove lst (unwrap-promise child)))))
 
-
-
+  (replace-indexed-child! [this parent k idx child]
+    (run-later
+     (let [^List lst (render-core/get-property (unwrap-promise parent) k)]
+       (doto lst
+         (.remove ^int idx)
+         (.add ^int idx (unwrap-promise child)))))))
 
 (defrecord App [prev-state dom root handler-fn])
 
@@ -51,7 +51,7 @@
 
 (defn app
   ([init-state]
-    (app init-state default-handler-fn))
+   (app init-state default-handler-fn))
   ([init-state default-handler-fn]
    (let [dom  (->FXDom default-handler-fn)
          root (:node (diff dom nil init-state))]
@@ -61,5 +61,3 @@
 (defn update-app [{:keys [prev-state dom root handler-fn]} new-state]
   (let [new-node (:node (time (diff dom prev-state new-state)))]
     (->App new-state dom new-node handler-fn)))
-
-

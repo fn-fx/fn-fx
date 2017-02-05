@@ -24,7 +24,9 @@
 
   (delete-indexed-child! [this parent k idx child]
     (swap! this update-in [:log] conj [:delete-indexed-child parent k idx child]))
-  )
+
+  (replace-indexed-child! [this parent k idx child]
+    (swap! this update-in [:log] conj [:replace-indexed-child parent k idx child])))
 
 
 (defn log []
@@ -90,8 +92,11 @@
                          [:create 2 :button]
                          [:set-property 2 :text "Hello World"]
                          [:set-property 1 :root 2]]}))))
-  )
 
+  (testing "from value to nil"
+    (let [log (log)
+          value :x]
+      (is (= (->Deleted value) (diff log value nil))))))
 
 (deftest component-diffing
   (testing "can change spec values"
@@ -111,12 +116,11 @@
           component-a (component :button {:text "test1"})
           component-b (component :text {:text "test2"})]
       (is (= (->Created 1) (diff log nil component-a)))
-      (is (= (->Created 2) (diff log component-a component-b)))
+      (is (= (->Updated 2) (diff log component-a component-b)))
 
       (is (= @log {:id  2
                    :log [[:create 1 :button]
                          [:set-property 1 :text "test1"]
-                         [:delete 1]
                          [:create 2 :text]
                          [:set-property 2 :text "test2"]]}))))
 
@@ -182,6 +186,35 @@
                          [:set-property 2 :text "Hey"]
                          [:set-indexed-child 1 :children 0 2]
                          [:delete-indexed-child 1 :children 0 2]]}))))
+
+  (testing "can replace child in list"
+    (let [log (log)
+          component-a (component :list {:children [(component :text {:text "Hey"})]})
+          component-b (component :list {:children [(component :text {:text "Bye"})]})
+          component-c (component :list {:children [(component :button {:text "Click me"})]})]
+
+      (is (= (->Created 1) (diff log nil component-a)))
+      (is (= (->Updated 1) (diff log component-a component-b)))
+
+      (is (= @log {:id  2
+                   :log [[:create 1 :list]
+                         [:create 2 :text]
+                         [:set-property 2 :text "Hey"]
+                         [:set-indexed-child 1 :children 0 2]
+                         [:set-property 2 :text "Bye"]
+                         [:replace-indexed-child 1 :children 0 2]]}))
+
+      (is (= (->Updated 1) (diff log component-b component-c)))
+      (is (= @log {:id  3
+                   :log [[:create 1 :list]
+                         [:create 2 :text]
+                         [:set-property 2 :text "Hey"]
+                         [:set-indexed-child 1 :children 0 2]
+                         [:set-property 2 :text "Bye"]
+                         [:replace-indexed-child 1 :children 0 2]
+                         [:create 3 :button]
+                         [:set-property 3 :text "Click me"]
+                         [:replace-indexed-child 1 :children 0 3]]}))))
 
 
   (testing "complex nesting"
