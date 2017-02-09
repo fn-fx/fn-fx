@@ -220,8 +220,9 @@
                                               (.getParameters ctor)))]
         (.newInstance ctor arr)))))
 
+
 (defn get-setter [^Class klass prop]
-  (let [prop-name      (str "set" (util/kabob->class (name prop)))
+  (let [prop-name      (str "set" (util/kabob->class (str/replace (name prop) "?" "")))
         ^Method method (->> (.getMethods klass)
                             (filter #(= prop-name (.getName ^Method %)))
                             (filter #(= 1 (count (.getParameters ^Method %))))
@@ -304,8 +305,13 @@
         (vswap! listeners assoc prop listener)
         (.addListener ob listener)))))
 
+(defn prop->getter-name [prop]
+  (if (.endsWith (name prop) "?")
+    (str "is" (util/kabob->class (str/replace (name prop) "?" "")))
+    (str "get" (util/kabob->class (name prop)))))
+
 (defn get-getter [^Class klass prop]
-  (let [prop-name      (str "get" (util/kabob->class (name prop)))
+  (let [prop-name      (prop->getter-name prop)
         ^Method method (->> (.getMethods klass)
                             (filter #(= prop-name (.getName ^Method %)))
                             (filter #(zero? (count (.getParameters ^Method %))))
