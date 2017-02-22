@@ -1,6 +1,6 @@
 # fn(fx)
 This library provides a functional, declarative wrapper around JavaFX. The goals are to provide a "Virtual DOM"
-interface over the OOP mutability JavaFX embrances. 
+interface over the OOP mutability JavaFX embraces. 
 
 # Rationale
 While the web has taken over many aspects of GUI programming that normally would have been implemented in JavaFX, it's
@@ -14,13 +14,13 @@ of delving into the mess of mutability that is GUI programming.
 This is the niche that fn(fx) attempts to fill: providing a functional interface over JavaFX
 
 # Basic Overview
-fn(fx) requires that users express their ui via data, and calls to a function known as "ui". This function constructs
+fn(fx) requires that users express their UI via data, and calls to a function known as "ui". This function constructs
 a quasi-immutable datastructure that can easily be diffed against other components. We say "quasi-immutable", since
 some of the fields on the structure are mutated, but only once, from nil to a known value, never from a value 
-to another value. This tree of components can then be handedled by several functions: 
+to another value. This tree of components can then be handled by several functions: 
 
 * `(fn-fx.fx-dom/render component event-callback)` - This function takes a virtual dom (component tree) and
-renders it, returning an opaque structure that can be used to later up date the UI with a new virtual dom.
+renders it, returning an opaque structure that can be used to later update the UI with a new virtual dom.
 `event-callback` is a function that will be handed events from the UI, more on that later. 
 * `(fn-fn.fx-dom/update-dom prev-state new-dom)` - Given a value returned from a previous call to `render`
 or `update-dom` this function will diff `new-dom` against the dom used to create `prev-state` the resulting diff
@@ -34,7 +34,7 @@ the event-callback handed to the initial call to `render`
 ## User components
 The `defui` macro generates a "user component" that is not a UI component, but a rendering function, and an 
 optional differ function. The render method on this component is only invoked when the properties to the component
-change. `defui` is most often used to optimzie re-rendering as whole sections of the UI can be ignored during rendering
+change. `defui` is most often used to optimize re-rendering as whole sections of the UI can be ignored during rendering
 and diffing if the properties of the component haven't changed since the last render cycle. 
 
 # Example
