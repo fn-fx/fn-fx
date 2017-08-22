@@ -10,4 +10,4 @@
                    :dependencies [[com.github.javaparser/javaparser-core "2.5.1"]
                                   [org.jboss.forge.roaster/roaster-api "2.19.0.Final"]
                                   [org.jboss.forge.roaster/roaster-jdt "2.19.0.Final"]]}}
-  :plugins [[lein-release "1.0.5"]])
+  :plugins [[lein-release "1.0.5"] [venantius/ultra "0.5.1"] [jonase/eastwood "0.2.4"][lein-kibit "0.1.5"]])

@@ -27,8 +27,7 @@
 (defrecord Noop [node])
 
 (defn render-user-component [{:keys [props render-result] :as comp}]
-  (when (not render-result)
-    (set-once! comp :render-result (render comp props)))
+  (when-not render-result (set-once! comp :render-result (render comp props)))
   (:render-result comp))
 
 (defn val-type [a]
@@ -112,12 +111,7 @@
                         (diff dom (render-user-component a) (render-user-component b))
                         (->Noop (:dom-node (:render-result b))))
 
-      [:comp :comp] (-> (if (= (:type a) (:type b))
-                          (doto (:dom-node a)
-                            (assert (str "No DOM Node" (pr-str a)))
-                            (refresh-node a b))
-                          (new-node b))
-                        ->Updated)
+      [:comp :comp] (->Updated (if (= (:type a) (:type b)) (doto (:dom-node a) (assert (str "No DOM Node" (pr-str a))) (refresh-node a b)) (new-node b)))
 
       [:comp :nil] (->Deleted (:dom-node a))
 
@@ -146,9 +140,7 @@
            (defquasitype ~nm [~'type ~'props ~'render-result]
                        IUserComponent
                        ~@mp
-                       ~@(when (not @has-should-update?)
-                           `[(should-update? [this# old-props# new-props#]
-                                           (= old-props# new-props#))]))
+                       ~@(when-not (deref has-should-update?) (quote [(should-update? [this# old-props# new-props#] (= old-props# new-props#))])))
          (defn ~fn-name
            ([] (~fn-name {}))
            ([k# v# & props#]
