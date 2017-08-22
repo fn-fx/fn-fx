@@ -1,7 +1,7 @@
-
 (ns fn-fx.controls
-  (:refer-clojure :exclude [when ])
-  (:require [fn-fx.render-core :as render-core] [fn-fx.diff :as diff]))
+  (:refer-clojure :exclude [when])
+  (:require [fn-fx.render-core :as render-core]
+            [fn-fx.diff :as diff]))
 
 (set! clojure.core/*warn-on-reflection* true)
 

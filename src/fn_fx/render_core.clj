@@ -79,8 +79,7 @@
 (defn set-properties [object properties]
   (reduce-kv
     (fn [obj attr val]
-      (when (not (identical? attr :type))
-        (set-property obj attr val))
+      (when-not (identical? attr :type) (set-property obj attr val))
       obj)
     object
     properties))
@@ -105,12 +104,7 @@
 
 
 (defn register-keyword-conv [^Class tp]
-  (let [values (->> (for [^Field f (.getDeclaredFields tp)
-                          :when (Modifier/isPublic (.getModifiers f))
-                          :when (Modifier/isStatic (.getModifiers f))
-                          :when (= tp (.getType f))]
-                      [(keyword (util/upper->kabob (.getName f))) (.get f nil)])
-                    (into {}))]
+  (let [values (into {} (for [f (.getDeclaredFields tp) :when (Modifier/isPublic (.getModifiers f)) :when (Modifier/isStatic (.getModifiers f)) :when (= tp (.getType f))] [(keyword (util/upper->kabob (.getName f))) (.get f nil)]))]
     (defmethod convert-value [clojure.lang.Keyword tp]
       [val _]
       (let [r (get values val ::not-found)]

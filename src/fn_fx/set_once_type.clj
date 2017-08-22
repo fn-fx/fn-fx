@@ -9,8 +9,7 @@
   {:pre [(symbol? tp-name)
          (every? symbol? fields)]}
   (let [fields (mapv (fn [sym]
-                       (with-meta sym
-                                  (assoc (meta sym) :volatile-mutable true)))
+                       (vary-meta sym assoc :volatile-mutable true))
                      fields)
         v-sym  (gensym "v")]
     `(deftype ~tp-name ~fields
