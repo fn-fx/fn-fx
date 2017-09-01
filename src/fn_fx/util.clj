@@ -5,7 +5,9 @@
 (Platform/setImplicitExit false)
 
 (defn -run-later [^java.lang.Runnable fn]
-  (Platform/runLater fn))
+  (if (Platform/isFxApplicationThread)
+    (fn)
+    (Platform/runLater fn)))
 
 (defmacro run-later [& body]
   `(-run-later

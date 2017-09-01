@@ -59,5 +59,5 @@
      (->App init-state dom root default-handler-fn))))
 
 (defn update-app [{:keys [prev-state dom root handler-fn]} new-state]
-  (let [new-node (:node (time (diff dom prev-state new-state)))]
+  (let [new-node (:node (diff dom prev-state new-state))]
     (->App new-state dom new-node handler-fn)))
