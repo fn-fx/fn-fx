@@ -112,6 +112,10 @@
                         (diff dom (render-user-component a) (render-user-component b))
                         (->Noop (:dom-node (:render-result b))))
 
+      [:ucomp :comp] (diff dom (render-user-component a) b)
+
+      [:comp :ucomp] (diff dom a (render-user-component b))
+
       [:comp :comp] (-> (if (= (:type a) (:type b))
                           (doto (:dom-node a)
                             (assert (str "No DOM Node" (pr-str a)))
