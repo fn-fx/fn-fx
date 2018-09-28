@@ -287,12 +287,47 @@
       {}
       include)))
 
+
+
+(defn- get-prop-methods [^Class class prop]
+  "Returns a vector of methods that need to be composed in order to get to the desired property.
+  For example, for :selection-model.selected-item the methods \"getSelectionModel\" and \"selectedItemProperty\" will be returned (for the given class)."
+  (let [empty-array (make-array Class 0)
+        method-names (str/split (name prop) #"\.")
+        last-index (dec (count method-names))
+        method-names (map-indexed (fn [i method-name]
+                                    (let [^String mn (util/kabob->camel method-name)]
+                                      (if (= last-index i)
+                                        (str mn "Property")
+                                        (str "get" (Character/toUpperCase (.charAt mn 0)) (.substring mn 1)))))
+                                  method-names)]
+
+    (loop [class class
+           method-names method-names
+           result []]
+      (if (empty? method-names)
+        result
+        (let [m (.getMethod class (first method-names) empty-array)]
+          (recur (.getReturnType m) (rest method-names) (conj result m))))
+      )))
+
+
+
+(defn- invoke-comp [methods inst]
+  (if (empty? methods)
+    inst
+    (invoke-comp (rest methods)
+                 (.invoke ^Method (first methods) inst (make-array Class 0)))))
+
+
+
 (defn get-add-listener [^Class class prop]
-  (let [prop-name   (str (util/kabob->camel (name prop)) "Property")
-        empty-array (make-array Class 0)
-        prop        (.getMethod class prop-name empty-array)]
+  (let [;prop-name   (str (util/kabob->camel (name prop)) "Property")
+        ;empty-array (make-array Class 0)
+        ;prop        (.getMethod class prop-name empty-array)
+        methods (get-prop-methods class prop)]
     (fn [inst val]
-      (let [^ObservableValue ob (.invoke ^Method prop inst empty-array)
+      (let [^ObservableValue ob (invoke-comp methods inst)                    ;(.invoke ^Method prop inst empty-array)
             listeners           (get-listeners listener-map inst)
             handler-fn          *handler-fn*
             listener            (reify ChangeListener
