@@ -1,24 +1,24 @@
-[![Build Status](https://travis-ci.com/fn-fx/fn-fx-openjfx.svg?branch=master)](https://travis-ci.com/fn-fx/fn-fx-openjfx)
+[![Build Status](https://travis-ci.com/fn-fx/fn-fx.svg?branch=openjfx)](https://travis-ci.com/fn-fx/fn-fx)
 
-**NOTE: This is a Java 11 / OpenJFX specific fork of [@halgari's original library](https://github.com/halgari/fn-fx).  Assistance /
-contribution welcome, given I'm a JavaFX n00b!**
+**NOTE: This is the Java 11 / OpenJFX specific branch of [fn-fx](https://github.com/fn-fx/fn-fx).  Assistance /
+contribution welcome, given I'm a JavaFX / OpenJFX n00b!**
 
-Please see the [contribution guide](https://github.com/fn-fx/fn-fx-openjfx/blob/master/.github/CONTRIBUTING.md) for more details.
+Please see the [contribution guide](https://github.com/fn-fx/fn-fx/blob/openjfx/.github/CONTRIBUTING.md) for more details.
 
 # fn(fx)
-This library provides a functional, declarative wrapper around JavaFX. The goals are to provide a "Virtual DOM"
-interface over the OOP mutability JavaFX embraces.
+This library provides a functional, declarative wrapper around OpenJFX. The goals are to provide a "Virtual DOM"
+interface over the OOP mutability OpenJFX embraces.
 
 # Rationale
-While the web has taken over many aspects of GUI programming that normally would have been implemented in JavaFX, it's
+While the web has taken over many aspects of GUI programming that normally would have been implemented in OpenJFX, it's
 still important to recognize that a certain amount of complexity is involved in adopting a web based GUI. Programmers must
 now write in several other languages, setup web servers, and handle network data transfers, when all that was required
 was a GUI to some backend process. Sometimes a desktop UI really is the simplest option.
 
-However, clojure developers have traditionally shied away from adopting technologies such as Swing and JavaFX for fear
+However, clojure developers have traditionally shied away from adopting technologies such as Swing and OpenJFX for fear
 of delving into the mess of mutability that is GUI programming.
 
-This is the niche that fn(fx) attempts to fill: providing a functional interface over JavaFX
+This is the niche that fn(fx) attempts to fill: providing a functional interface over OpenJFX
 
 # Basic Overview
 fn(fx) requires that users express their UI via data, and calls to a function known as "ui". This function constructs

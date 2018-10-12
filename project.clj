@@ -1,6 +1,6 @@
 (defproject halgari/fn-fx "0.5.0-SNAPSHOT"
   :description      "A declarative wrapper for OpenJFX"
-  :url              "http://github.com/fn-fx/fn-fx-openjfx"
+  :url              "https://github.com/fn-fx/fn-fx/tree/openjfx"
   :license          {:spdx-license-identifier "EPL-1.0"
                      :name                    "Eclipse Public License v1.0"
                      :url                     "http://www.eclipse.org/legal/epl-v10.html"}

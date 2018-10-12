@@ -16,12 +16,12 @@ By submitting a contribution to the fn-fx project you agree to the above stateme
 
 ## Prerequisites
 
-* [ ] Have you [searched for duplicates](https://github.com/pmonks/fn-fx/issues?utf8=%E2%9C%93&q=)?  A simple search for exception error messages or a summary of the unexpected behaviour should suffice.
+* [ ] Have you [searched for duplicates](https://github.com/fn-fx/fn-fx/issues?utf8=%E2%9C%93&q=)?  A simple search for exception error messages or a summary of the unexpected behaviour should suffice.
 * [ ] Are you running the latest version?
 * [ ] Are you sure this is a bug or missing capability?
 
 ## Raising an Issue
-* Create your issue [here](https://github.com/pmonks/fn-fx/issues/new).
+* Create your issue [here](https://github.com/fn-fx/fn-fx/issues/new).
 * The project provides a couple of issue templates  - please pick the most appropriate for your issue type.
 * Please use [Markdown formatting](https://help.github.com/categories/writing-on-github/) liberally to assist in readability.
   * [Code fences](https://help.github.com/articles/creating-and-highlighting-code-blocks/) for exception stack traces and log entries, to pick one example, massively improve issue readability.
