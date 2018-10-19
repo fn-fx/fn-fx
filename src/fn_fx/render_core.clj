@@ -58,7 +58,9 @@
                                              (filter
                                                (fn [{:keys [prop-names-kw is-ctor?]}]
                                                  (and (= prop-names-kw arg-names)
-                                                      is-ctor?)))
+                                                      is-ctor?
+                                                      (= (count prop-types)
+                                                         (count arg-vals)))))
                                              first)
           _           (assert method (str "No Ctor found for " tp " " arg-names))
           param-types (map #(.getType ^Parameter %)
