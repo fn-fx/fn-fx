@@ -2,12 +2,12 @@ sudo: false
 language: clojure
 lein: 2.8.1
 jdk:
-  - openjdk8
-  - openjdk9
-# Monocle isn't provided for JDK v10
+  - oraclejdk8
+  - oraclejdk9
+  - oraclejdk9
   - openjdk11
 
-# Run Xvfb for JDK 8 & 9 (where Monocle doesn't seem to work...)
+# Run Xvfb for JDK 8, 9 & 10 (where Monocle doesn't work or isn't available...)
 before_install:
   - "/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1024x768x24"
 
@@ -15,4 +15,5 @@ script:
   - "export DISPLAY=:99.0"
   - if [[ $TRAVIS_JDK_VERSION == *jdk8 ]]; then lein do version, test; fi
   - if [[ $TRAVIS_JDK_VERSION == *jdk9 ]]; then lein do version, test; fi
+  - if [[ $TRAVIS_JDK_VERSION == *jdk10 ]]; then lein do version, test; fi
   - if [[ $TRAVIS_JDK_VERSION == *jdk11 ]]; then  lein with-profile +openjfx11,+openjfx11-test,+test do version, test; fi
