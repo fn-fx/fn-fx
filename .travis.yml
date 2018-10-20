@@ -2,11 +2,14 @@ sudo: false
 language: clojure
 lein: 2.8.1
 jdk:
-  - openjdk11
+  - oraclejdk8   # For JavaFX testing
+  - openjdk11    # For OpenJFX testing
 
-#before_install:
-#  - "/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x24"
+# Monocle seems pretty unreliable, so start a virtual frame buffer instead
+before_install:
+  - "/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1024x768x24"
 
 script:
-#  - "export DISPLAY=:99.0"
-  - lein with-profile +test do version, test
+  - "export DISPLAY=:99.0"
+  - if [[ $TRAVIS_JDK_VERSION != *jdk11 ]]; then lein do version, test; fi
+  - if [[ $TRAVIS_JDK_VERSION == *jdk11 ]]; then lein with-profile +openjfx11 do version, test; fi
