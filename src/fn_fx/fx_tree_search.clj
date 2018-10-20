@@ -20,7 +20,7 @@
 
 
 (defn find-child-by-id [^Node node id]
-  (println node "= " (.getId node) id)
+  ;(println node "= " (.getId node) id)
   (if (= (.getId node) id)
     node
     (reduce

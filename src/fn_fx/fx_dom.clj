@@ -40,9 +40,11 @@
   (replace-indexed-child! [this parent k idx child]
     (run-later
      (let [^List lst (render-core/get-property (unwrap-promise parent) k)]
-       (doto lst
-         (.remove ^int idx)
-         (.add ^int idx (unwrap-promise child)))))))
+       (.set lst ^int idx (unwrap-promise child))
+       ;(doto lst
+       ;  (.remove ^int idx)
+       ;  (.add ^int idx (unwrap-promise child)))
+       ))))
 
 (defrecord App [prev-state dom root handler-fn])
 

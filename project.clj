@@ -10,7 +10,7 @@
   :dependencies     [[org.clojure/clojure         "1.9.0"]
                      [org.reflections/reflections "0.9.11"]]
   :profiles         {:dev            {:source-paths ["src" "examples"]
-                                      :plugins      [[lein-release "1.0.5"]
+                                      :plugins      [[lein-release  "1.0.5"]
                                                      [lein-licenses "0.2.2"]
                                                      [lein-codox    "0.10.4"]]
                                       :dependencies [[com.github.javaparser/javaparser-core "3.6.26"]
