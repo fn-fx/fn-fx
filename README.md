@@ -12,7 +12,7 @@ still important to recognize that a certain amount of complexity is involved in 
 now write in several other languages, setup web servers, and handle network data transfers, when all that was required
 was a GUI to some backend process. Sometimes a desktop UI really is the simplest option.
 
-However, clojure developers have traditionally shied away from adopting technologies such as Swing and OpenJFX for fear
+However, clojure developers have traditionally shied away from adopting technologies such as Swing and JavaFX / OpenJFX for fear
 of delving into the mess of mutability that is GUI programming.
 
 This is the niche that fn(fx) attempts to fill: providing a functional interface over JavaFX / OpenJFX.
