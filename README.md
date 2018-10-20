@@ -1,45 +1,52 @@
+[![Build Status](https://travis-ci.com/fn-fx/fn-fx.svg?branch=openjfx)](https://travis-ci.com/fn-fx/fn-fx)
+
+**NOTE: This is the Java 11 / OpenJFX specific branch of [fn-fx](https://github.com/fn-fx/fn-fx).  Assistance /
+contribution welcome, given I'm a JavaFX / OpenJFX n00b!**
+
+Please see the [contribution guide](https://github.com/fn-fx/fn-fx/blob/openjfx/.github/CONTRIBUTING.md) for more details.
+
 # fn(fx)
-This library provides a functional, declarative wrapper around JavaFX. The goals are to provide a "Virtual DOM"
-interface over the OOP mutability JavaFX embraces. 
+This library provides a functional, declarative wrapper around OpenJFX. The goals are to provide a "Virtual DOM"
+interface over the OOP mutability OpenJFX embraces.
 
 # Rationale
-While the web has taken over many aspects of GUI programming that normally would have been implemented in JavaFX, it's
+While the web has taken over many aspects of GUI programming that normally would have been implemented in OpenJFX, it's
 still important to recognize that a certain amount of complexity is involved in adopting a web based GUI. Programmers must
 now write in several other languages, setup web servers, and handle network data transfers, when all that was required
-was a GUI to some backend process. Sometimes a desktop UI really is the simplest option. 
+was a GUI to some backend process. Sometimes a desktop UI really is the simplest option.
 
-However, clojure developers have traditionally shied away from adopting technologies such as Swing and JavaFX for fear
-of delving into the mess of mutability that is GUI programming. 
+However, clojure developers have traditionally shied away from adopting technologies such as Swing and OpenJFX for fear
+of delving into the mess of mutability that is GUI programming.
 
-This is the niche that fn(fx) attempts to fill: providing a functional interface over JavaFX
+This is the niche that fn(fx) attempts to fill: providing a functional interface over OpenJFX
 
 # Basic Overview
 fn(fx) requires that users express their UI via data, and calls to a function known as "ui". This function constructs
 a quasi-immutable datastructure that can easily be diffed against other components. We say "quasi-immutable", since
-some of the fields on the structure are mutated, but only once, from nil to a known value, never from a value 
-to another value. This tree of components can then be handled by several functions: 
+some of the fields on the structure are mutated, but only once, from nil to a known value, never from a value
+to another value. This tree of components can then be handled by several functions:
 
 * `(fn-fx.fx-dom/render component event-callback)` - This function takes a virtual dom (component tree) and
 renders it, returning an opaque structure that can be used to later update the UI with a new virtual dom.
-`event-callback` is a function that will be handed events from the UI, more on that later. 
+`event-callback` is a function that will be handed events from the UI, more on that later.
 * `(fn-fn.fx-dom/update-dom prev-state new-dom)` - Given a value returned from a previous call to `render`
 or `update-dom` this function will diff `new-dom` against the dom used to create `prev-state` the resulting diff
-will be used to make minimal changes to the UI where required. 
+will be used to make minimal changes to the UI where required.
 
 ## Event handling
 Events are data, and are attached to components where `EventHandler` instances would normally be used. Thus creating
-a button with the property `:on-action {:event :clicked!}` would result in a button that sent `{:event :clicked!}` to 
+a button with the property `:on-action {:event :clicked!}` would result in a button that sent `{:event :clicked!}` to
 the event-callback handed to the initial call to `render`
 
 ## User components
-The `defui` macro generates a "user component" that is not a UI component, but a rendering function, and an 
+The `defui` macro generates a "user component" that is not a UI component, but a rendering function, and an
 optional differ function. The render method on this component is only invoked when the properties to the component
 change. `defui` is most often used to optimize re-rendering as whole sections of the UI can be ignored during rendering
-and diffing if the properties of the component haven't changed since the last render cycle. 
+and diffing if the properties of the component haven't changed since the last render cycle.
 
 # Example
 
-```clojure 
+```clojure
 
 (ns getting-started.02-form
   (:require [fn-fx.fx-dom :as dom]

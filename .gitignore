@@ -1,0 +1,16 @@
+.idea
+*.iml
+pom.xml
+pom.xml.asc
+*jar
+/lib/
+/classes/
+/targets/
+/target/
+.lein-deps-sum
+.lein-repl-history
+.lein-failures
+.cpcache/
+.nrepl-port
+.shell_history
+*.log
