@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/fn-fx/fn-fx.svg?branch=openjfx)](https://travis-ci.com/fn-fx/fn-fx)
+[![Build Status](https://travis-ci.com/fn-fx/fn-fx.svg?branch=master)](https://travis-ci.com/fn-fx/fn-fx)
 
 **NOTE: This is the Java 11 / OpenJFX specific branch of [fn-fx](https://github.com/fn-fx/fn-fx).  Assistance /
 contribution welcome, given I'm a JavaFX / OpenJFX n00b!**
