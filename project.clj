@@ -22,6 +22,7 @@
                                                      [org.openjfx/javafx-fxml     "11"]
                                                      [org.openjfx/javafx-web      "11"]
                                                      [org.openjfx/javafx-graphics "11"]]}
+; Monocle seems pretty unreliable, especially on older JVMs, so we use Xvfb for CI instead.  I've left these details here for now in case we want to reintroduce Monocle at some point.
 ;                     :openjfx11-test {:dependencies [[org.testfx/openjfx-monocle  "jdk-11+26" :exclusions [org.openjfx/javafx-base
 ;                                                                                                           org.openjfx/javafx-controls
 ;                                                                                                           org.openjfx/javafx-graphics]]]
@@ -33,5 +34,4 @@
 ;                                                     "-Dprism.order=sw"
 ;                                                     "-Dprism.text=t2k"
 ;                                                     "-Dheadless.geometry=1024x768-24"]}
-}
-  )
+                    })
