@@ -10,9 +10,9 @@
   :dependencies     [[org.clojure/clojure         "1.9.0"]
                      [org.reflections/reflections "0.9.11"]]
   :profiles         {:dev            {:source-paths ["src" "examples"]
-                                      :plugins      [[lein-release  "1.0.5"]
+                                      :plugins      [[lein-release  "1.1.3"]
                                                      [lein-licenses "0.2.2"]
-                                                     [lein-codox    "0.10.4"]]
+                                                     [lein-codox    "0.10.5"]]
                                       :dependencies [[com.github.javaparser/javaparser-core "3.6.26"]
                                                      [org.jboss.forge.roaster/roaster-api   "2.20.2.Final"]
                                                      [org.jboss.forge.roaster/roaster-jdt   "2.20.2.Final"]]}
