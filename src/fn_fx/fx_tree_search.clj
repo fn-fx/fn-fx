@@ -1,6 +1,8 @@
 (ns fn-fx.fx-tree-search
   (:import (javafx.scene Node)))
 
+(set! *warn-on-reflection* true)
+
 (defprotocol IParentNode
   (get-children [this])
   (get-parent [this]))
@@ -19,8 +21,26 @@
     (.getParent this)))
 
 
+;; Covers JavaFX objects which are containers, but are not necessarily nodes (like Stage, Scene)
+(defprotocol IContainer
+  (get-root-node [this]))
+
+(extend-protocol IContainer
+  javafx.stage.Window
+  (get-root-node [this]
+    (let [scene (.getScene this)]
+      (and scene (.getRoot scene))))
+
+  javafx.scene.Scene
+  (get-root-node [this]
+    (.getRoot this))
+
+  javafx.scene.Parent
+  (get-root-node [this]
+    this))
+
+
 (defn find-child-by-id [^Node node id]
-  ;(println node "= " (.getId node) id)
   (if (= (.getId node) id)
     node
     (reduce
@@ -32,10 +52,11 @@
 
 
 (defn find-nearest-by-id
-  ([node id]
-   (when node
-     (or (find-child-by-id node id)
-         (find-nearest-by-id node id node))))
+  ([container id]
+   (let [node (and container (get-root-node container))]
+     (when node
+       (or (find-child-by-id node id)
+           (find-nearest-by-id node id node)))))
   ([^Node node id skip]
    (if-let [parent (get-parent node)]
      (if-let [found (reduce
