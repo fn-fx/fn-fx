@@ -1,4 +1,14 @@
-(defproject halgari/fn-fx "0.5.0-SNAPSHOT"
+(require '[leiningen.core.project :as lein])
+
+; I feel dirty...
+(def version-suffix
+  (if (= (System/getProperty "java.specification.version") "11")
+    (do
+      (swap! lein/default-profiles #(assoc % :default (conj (:default %) :openjfx11)))  ; Automatically add the :openjfx11 profile if running on Java 11
+      "openjfx11")
+    "javafx"))
+
+(defproject fn-fx/fn-fx (str "0.5.0-SNAPSHOT-" version-suffix)
   :description      "A declarative wrapper for OpenJFX"
   :url              "https://github.com/fn-fx/fn-fx/tree/openjfx"
   :license          {:spdx-license-identifier "EPL-1.0"
@@ -9,6 +19,10 @@
                      ["jcenter"            {:url "https://jcenter.bintray.com/" :snapshots false}]]
   :dependencies     [[org.clojure/clojure         "1.9.0"]
                      [org.reflections/reflections "0.9.11"]]
+  ; This should probably use :classifiers (https://github.com/technomancy/leiningen/blob/master/sample.project.clj#L507), but I've never really understood how they work...
+;  :jar-name         "fn-fx-%s-javafx.jar"
+;  :classifiers      {:javafx    {}
+;                     :openjfx11 :openjfx11}
   :profiles         {:dev            {:source-paths ["src" "examples"]
                                       :plugins      [[lein-release  "1.1.3"]
                                                      [lein-licenses "0.2.2"]
@@ -16,7 +30,9 @@
                                       :dependencies [[com.github.javaparser/javaparser-core "3.6.26"]
                                                      [org.jboss.forge.roaster/roaster-api   "2.20.2.Final"]
                                                      [org.jboss.forge.roaster/roaster-jdt   "2.20.2.Final"]]}
-                     :openjfx11      {:dependencies [[org.openjfx/javafx-controls "11"]
+                     :openjfx11      {;:jar-name     "fn-fx-%s-openjfx11.jar"
+;                                      :version      "~:version-openjfx11"
+                                      :dependencies [[org.openjfx/javafx-controls "11"]
                                                      [org.openjfx/javafx-swing    "11"]
                                                      [org.openjfx/javafx-media    "11"]
                                                      [org.openjfx/javafx-fxml     "11"]
@@ -34,4 +50,10 @@
 ;                                                     "-Dprism.order=sw"
 ;                                                     "-Dprism.text=t2k"
 ;                                                     "-Dheadless.geometry=1024x768-24"]}
-                    })
+                    }
+  :deploy-repositories [["snapshots" {:url      "https://clojars.org/repo"
+                                      :username :env/clojars_username
+                                      :password :env/clojars_password}]
+                        ["releases"  {:url      "https://clojars.org/repo"
+                                      :username :env/clojars_username
+                                      :password :env/clojars_password}]])
