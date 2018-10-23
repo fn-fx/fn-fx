@@ -19,10 +19,6 @@
                      ["jcenter"            {:url "https://jcenter.bintray.com/" :snapshots false}]]
   :dependencies     [[org.clojure/clojure         "1.9.0"]
                      [org.reflections/reflections "0.9.11"]]
-  ; This should probably use :classifiers (https://github.com/technomancy/leiningen/blob/master/sample.project.clj#L507), but I've never really understood how they work...
-;  :jar-name         "fn-fx-%s-javafx.jar"
-;  :classifiers      {:javafx    {}
-;                     :openjfx11 :openjfx11}
   :profiles         {:dev            {:source-paths ["src" "examples"]
                                       :plugins      [[lein-release  "1.1.3"]
                                                      [lein-licenses "0.2.2"]
@@ -30,9 +26,7 @@
                                       :dependencies [[com.github.javaparser/javaparser-core "3.6.26"]
                                                      [org.jboss.forge.roaster/roaster-api   "2.20.2.Final"]
                                                      [org.jboss.forge.roaster/roaster-jdt   "2.20.2.Final"]]}
-                     :openjfx11      {;:jar-name     "fn-fx-%s-openjfx11.jar"
-;                                      :version      "~:version-openjfx11"
-                                      :dependencies [[org.openjfx/javafx-controls "11"]
+                     :openjfx11      {:dependencies [[org.openjfx/javafx-controls "11"]
                                                      [org.openjfx/javafx-swing    "11"]
                                                      [org.openjfx/javafx-media    "11"]
                                                      [org.openjfx/javafx-fxml     "11"]
