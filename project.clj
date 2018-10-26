@@ -2,11 +2,16 @@
 
 ; I feel dirty...
 (def version-suffix
-  (if (= (System/getProperty "java.specification.version") "11")
-    (do
-      (swap! lein/default-profiles #(assoc % :default (conj (:default %) :openjfx11)))  ; Automatically add the :openjfx11 profile if running on Java 11
-      "openjfx11")
-    "javafx"))
+  (let [java-version    (System/getProperty "java.specification.version")]
+    (if (or (= java-version "1.7")
+            (= java-version "1.8")
+            (= java-version "9")
+            (= java-version "10"))
+      "javafx"
+      (let [openjfx-version (str "openjfx" java-version)]
+        (swap! lein/default-profiles
+               #(assoc % :default (conj (:default %) (keyword openjfx-version))))  ; Automatically add the :openjfxXX profile if running on Java versions that don't bundle JavaFX
+        openjfx-version))))
 
 (defproject fn-fx/fn-fx (str "0.5.0-SNAPSHOT-" version-suffix)
   :description      "A declarative wrapper for OpenJFX"
