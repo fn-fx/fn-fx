@@ -27,10 +27,7 @@
   :profiles         {:dev            {:source-paths ["src" "examples"]
                                       :plugins      [[lein-release  "1.1.3"]
                                                      [lein-licenses "0.2.2"]
-                                                     [lein-codox    "0.10.5"]]
-                                      :dependencies [[com.github.javaparser/javaparser-core "3.6.27"]
-                                                     [org.jboss.forge.roaster/roaster-api   "2.20.2.Final"]
-                                                     [org.jboss.forge.roaster/roaster-jdt   "2.20.2.Final"]]}
+                                                     [lein-codox    "0.10.5"]]}
                      :openjfx11      {:dependencies [[org.openjfx/javafx-controls "11"]
                                                      [org.openjfx/javafx-swing    "11"]
                                                      [org.openjfx/javafx-media    "11"]
