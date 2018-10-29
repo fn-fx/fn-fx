@@ -20,17 +20,11 @@ script:
   - "export DISPLAY=:99.0"
   - lein do version, test
 
-deploy:
-  # Deploy two sets of binaries to Clojars - one for JavaFX (on JDK 8) and one for OpenJFX (on JDK 11)
-  - provider: script
-    skip_cleanup: true
-    script: lein deploy
-    on:
-      branch: master
-      jdk: oraclejdk8
-  - provider: script
-    skip_cleanup: true
-    script: lein deploy
-    on:
-      branch: master
-      jdk: openjdk11
+# Commented out while we await https://github.com/clojars/clojars-web/issues/708
+#deploy:
+#  - provider: script
+#    skip_cleanup: true
+#    script: lein deploy
+#    on:
+#      branch: master
+#      jdk: openjdk11
