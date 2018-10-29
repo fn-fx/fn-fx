@@ -165,8 +165,8 @@ These dependencies are:
 ```
 
 We hope to ship two "editions" of the library that hide this mess from you, the library consumer, but doing so has
-proven to be more complex than anticipated (see issue #43 for details), so for now we've kicked the dependency can down
-the road to you, and humbly beg your forgiveness.
+proven to be more complex than anticipated (see [issue #43](https://github.com/fn-fx/fn-fx/issues/43) for details), so
+for now we've kicked this can down the road to you, and humbly beg your forgiveness.
 
 # License
 Copyright (c) 2016 Timothy Baldridge. All rights reserved.
