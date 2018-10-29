@@ -47,9 +47,11 @@
 ;                                                     "-Dprism.text=t2k"
 ;                                                     "-Dheadless.geometry=1024x768-24"]}
                     }
-  :deploy-repositories [["snapshots" {:url      "https://clojars.org/repo"
-                                      :username :env/clojars_username
-                                      :password :env/clojars_password}]
-                        ["releases"  {:url      "https://clojars.org/repo"
-                                      :username :env/clojars_username
-                                      :password :env/clojars_password}]])
+  :deploy-repositories [["snapshots" {:url           "https://clojars.org/repo"
+                                      :username      :env/clojars_username
+                                      :password      :env/clojars_password
+                                      :sign-releases false}]
+                        ["releases"  {:url           "https://clojars.org/repo"
+                                      :username      :env/clojars_username
+                                      :password      :env/clojars_password
+                                      :sign-releases false}]])     ; This is undesirable, however Clojars doesn't seem to recognise classifiers added to a SNAPSHOT version string (as we do above) as actual SNAPSHOTS  :-(
