@@ -146,8 +146,27 @@ and diffing if the properties of the component haven't changed since the last re
 
 # JavaFX vs OpenJFX
 
-The [build script](https://github.com/fn-fx/fn-fx/blob/master/project.clj) now includes a profile specifically for
-OpenJFX on Java 11, called `openjfx11`.  This profile will be automatically added if you're running on Java 11.
+JavaFX is included in JRE versions 1.7u6 through 10, but was unbundled as of JRE 11.  It is instead available as a
+standalone library called [OpenJFX](https://openjfx.io/) in that version and beyond.
+
+As a result of this backwards-compatibility-breaking change, you will need to ensure to include the OpenJFX dependencies
+if you're running on a JRE that doesn't bundle JavaFX (i.e. JRE v11+).
+
+These dependencies are:
+
+```clojure
+[fn-fx/fn-fx                 "0.5.0-SNAPSHOT"]   ; Or whatever the latest version of fn-fx/fn-fx is
+[org.openjfx/javafx-controls "11"]
+[org.openjfx/javafx-swing    "11"]
+[org.openjfx/javafx-media    "11"]
+[org.openjfx/javafx-fxml     "11"]
+[org.openjfx/javafx-web      "11"]
+[org.openjfx/javafx-graphics "11"]
+```
+
+We hope to ship two "editions" of the library that hide this mess from you, the library consumer, but doing so has
+proven to be more complex than anticipated (see issue #43 for details), so for now we've kicked the dependency can down
+the road to you, and humbly beg your forgiveness.
 
 # License
 Copyright (c) 2016 Timothy Baldridge. All rights reserved.
