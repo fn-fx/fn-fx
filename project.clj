@@ -1,4 +1,19 @@
-(defproject halgari/fn-fx "0.5.0-SNAPSHOT"
+(require '[leiningen.core.project :as lein])
+
+; I feel dirty...
+(def version-suffix
+  (let [java-version (System/getProperty "java.specification.version")]
+    (if (or (= java-version "1.7")
+            (= java-version "1.8")
+            (= java-version "9")
+            (= java-version "10"))
+      "javafx"
+      (let [openjfx-version (str "openjfx" java-version)]
+        (swap! lein/default-profiles
+               #(assoc % :default (conj (:default %) (keyword openjfx-version))))  ; Automatically add the :openjfxXX profile if running on Java versions that don't bundle JavaFX
+        openjfx-version))))
+
+(defproject fn-fx/fn-fx (str "0.5.0-SNAPSHOT-" version-suffix)
   :description      "A declarative wrapper for OpenJFX"
   :url              "https://github.com/fn-fx/fn-fx/tree/openjfx"
   :license          {:spdx-license-identifier "EPL-1.0"
@@ -12,10 +27,7 @@
   :profiles         {:dev            {:source-paths ["src" "examples"]
                                       :plugins      [[lein-release  "1.1.3"]
                                                      [lein-licenses "0.2.2"]
-                                                     [lein-codox    "0.10.5"]]
-                                      :dependencies [[com.github.javaparser/javaparser-core "3.6.26"]
-                                                     [org.jboss.forge.roaster/roaster-api   "2.20.2.Final"]
-                                                     [org.jboss.forge.roaster/roaster-jdt   "2.20.2.Final"]]}
+                                                     [lein-codox    "0.10.5"]]}
                      :openjfx11      {:dependencies [[org.openjfx/javafx-controls "11"]
                                                      [org.openjfx/javafx-swing    "11"]
                                                      [org.openjfx/javafx-media    "11"]
@@ -34,4 +46,10 @@
 ;                                                     "-Dprism.order=sw"
 ;                                                     "-Dprism.text=t2k"
 ;                                                     "-Dheadless.geometry=1024x768-24"]}
-                    })
+                    }
+  :deploy-repositories [["snapshots" {:url      "https://clojars.org/repo"
+                                      :username :env/clojars_username
+                                      :password :env/clojars_password}]
+                        ["releases"  {:url      "https://clojars.org/repo"
+                                      :username :env/clojars_username
+                                      :password :env/clojars_password}]])

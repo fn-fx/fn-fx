@@ -146,13 +146,8 @@ and diffing if the properties of the component haven't changed since the last re
 
 # JavaFX vs OpenJFX
 
-The [build script](https://github.com/fn-fx/fn-fx/blob/master/project.clj) now includes a profile specifically for OpenJFX on Java 11, called `openjfx11`.
-
-If you're using a JVM that does _not_ have JavaFX bundled (i.e. Java 11+), you need to run leiningen with that profile enabled in order for the correct dependencies to be brought down.  Examples:
-
- * To run the unit tests: `lein with-profile +openjfx11 test`
- * To open a REPL: `lein with-profile +openjfx11 repl`
- * etc.
+The [build script](https://github.com/fn-fx/fn-fx/blob/master/project.clj) now includes a profile specifically for
+OpenJFX on Java 11, called `openjfx11`.  This profile will be automatically added if you're running on Java 11.
 
 # License
 Copyright (c) 2016 Timothy Baldridge. All rights reserved.
