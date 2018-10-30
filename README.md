@@ -1,7 +1,7 @@
 [![Build Status](https://travis-ci.com/fn-fx/fn-fx.svg?branch=master)](https://travis-ci.com/fn-fx/fn-fx)
-[![Dependencies Status](https://versions.deps.co/fn-fx/fn-fx/status.svg)](https://versions.deps.co/fn-fx/fn-fx)
 [![JavaFX build on Clojars](https://img.shields.io/clojars/v/fn-fx/fn-fx-javafx.svg)](https://clojars.org/fn-fx/fn-fx-javafx)
 [![OpenJFX build on Clojars](https://img.shields.io/clojars/v/fn-fx/fn-fx-openjfx11.svg)](https://clojars.org/fn-fx/fn-fx-openjfx11)
+<!-- [![Dependencies Status](https://versions.deps.co/fn-fx/fn-fx/status.svg)](https://versions.deps.co/fn-fx/fn-fx) -->
 
 **Assistance / contributions welcome!**  Please see the [contribution guide](https://github.com/fn-fx/fn-fx/blob/master/.github/CONTRIBUTING.md) for more details.
 
@@ -154,8 +154,8 @@ the default JRE installation.
 
 As a result of this backwards-compatibility-breaking change, you will need to choose the right "edition" of `fn-fx`,
 based on the JRE version your code will ultimately run on.  The two editions, while identical from a developer's
-perspective, are deployed to Clojars under different names, to ensure that the correct dependencies are expressed for
-each case.
+perspective, are deployed to Clojars under different names, to ensure that the correct dependencies are included on
+those JREs that need them.
 
 These editions are available from Clojars using one of the following dependencies:
 
@@ -170,7 +170,7 @@ Each edition of `fn-fx` will only function on the JRE(s) appropriate for it.
 The regrettably [tight coupling between OpenJFX and JRE versions](http://mail.openjdk.java.net/pipermail/openjfx-discuss/2018-October/000061.html)
 makes it more challenging for `fn-fx` to maintain both forward and backward compatibilty across JRE versions, but our
 intent is to attempt to maintain the maximum compatibilty possible, at least until JRE 11 is widely deployed.  Whether
-this continues to be done via "editions" as described here, or separate branches of `fn-fx` is an open question.  If
+this continues to be done via editions as described here, or separate branches of `fn-fx` is an open question.  If
 you have suggestions / comments / preferences on this, please
 [let us know](https://github.com/fn-fx/fn-fx/issues/new?template=Support_question.md)!
 
