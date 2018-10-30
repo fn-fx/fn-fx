@@ -165,7 +165,7 @@ user=>
 
 Once you have a REPL up within the cloned directory, the examples may be run as follows:
 
-* **[01 Hello world](https://github.com/fn-fx/fn-fx/blob/master/examples/getting_started/01_hello_word.clj)**: `(require '[getting-started.01-hello-word])`
+* **[01 Hello world](https://github.com/fn-fx/fn-fx/blob/master/examples/getting_started/01_hello_word.clj)**: `(require '[getting-started.01-hello-word :as hello]) (hello/-main)`
 * **[02 Form](https://github.com/fn-fx/fn-fx/blob/master/examples/getting_started/02_form.clj)**: `(require '[getting-started.02-form :as form]) (form/-main)`
 * **[Shapes 3D](https://github.com/fn-fx/fn-fx/blob/master/examples/other_examples/shapes_3d.clj)**: `(require '[other-examples.shapes-3d :as shapes-3d]) (shapes-3d/-main)`
 * **[Todo](https://github.com/fn-fx/fn-fx/blob/master/examples/other_examples/todo.clj)**: `(require '[other-examples.todo :as todo]) (todo/-main)`
