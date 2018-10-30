@@ -1,5 +1,7 @@
 [![Build Status](https://travis-ci.com/fn-fx/fn-fx.svg?branch=master)](https://travis-ci.com/fn-fx/fn-fx)
 [![Dependencies Status](https://versions.deps.co/fn-fx/fn-fx/status.svg)](https://versions.deps.co/fn-fx/fn-fx)
+[![JavaFX build on Clojars](https://img.shields.io/clojars/v/fn-fx/fn-fx-javafx.svg)](https://clojars.org/fn-fx/fn-fx-javafx)
+[![OpenJFX build on Clojars](https://img.shields.io/clojars/v/fn-fx/fn-fx-openjfx11.svg)](https://clojars.org/fn-fx/fn-fx-openjfx11)
 
 **Assistance / contributions welcome!**  Please see the [contribution guide](https://github.com/fn-fx/fn-fx/blob/master/.github/CONTRIBUTING.md) for more details.
 
@@ -155,12 +157,15 @@ based on the JRE version your code will ultimately run on.  The two editions, wh
 perspective, are deployed to Clojars under different names, to ensure that the correct dependencies are expressed for
 each case.
 
-These editions are available as:
+These editions are available from Clojars using one of the following dependencies:
 
 ```clojure
-[fn-fx/fn-fx-javafx    "...version..."]   ; For JavaFX-equipped JREs (i.e. 1.7u6 through 10)
-[fn-fx/fn-fx-openjfx11 "...version..."]   ; To use OpenJFX 11 (which targets JRE 11)
+[fn-fx/fn-fx-javafx    "...fn-fx version..."]   ; For JavaFX-equipped JREs (i.e. 1.7u6 through 10)
+[fn-fx/fn-fx-openjfx11 "...fn-fx version..."]   ; To use OpenJFX 11 (which targets JRE 11)
 ```
+
+Please note that you **must** select the correct edition of `fn-fx` for the JRE version you'll be using at runtime.
+Each edition of `fn-fx` will only function on the JRE(s) appropriate for it.
 
 The regrettably [tight coupling between OpenJFX and JRE versions](http://mail.openjdk.java.net/pipermail/openjfx-discuss/2018-October/000061.html)
 makes it more challenging for `fn-fx` to maintain both forward and backward compatibilty across JRE versions, but our
