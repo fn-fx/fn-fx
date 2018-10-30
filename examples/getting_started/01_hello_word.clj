@@ -22,4 +22,6 @@
     (dom/app u handler-fn)))
 
 
-(-main)
+(comment
+  (-main)
+  )
