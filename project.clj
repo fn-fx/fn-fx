@@ -1,15 +1,20 @@
 (require '[leiningen.core.project :as lein])
 (require '[clojure.reflect :refer [resolve-class]])
 
-; Check if we're on a JVM that includes JavaFX, and if not automatically add the :openjfxXX profile (which is required
-; to bring in the appropriate OpenJFX dependencies for JVM version XX)
-(if (nil? (resolve-class (.getContextClassLoader (Thread/currentThread)) 'javafx.application.Platform))
-  (let [java-version    (System/getProperty "java.specification.version")
-        openjfx-version (str "openjfx" java-version)]
-    (swap! lein/default-profiles
-           #(assoc % :default (conj (:default %) (keyword openjfx-version))))))
+(defn project-name!
+  "Calculates the correct name for the project, based on the JVM used to *build* the code.  Marked with ! because it
+  also has the side effect of enabling the correct profile based on the JVM version, so that library users don't have
+  to continually remember to do it themselves."
+  []
+  (if (nil? (resolve-class (.getContextClassLoader (Thread/currentThread)) 'javafx.application.Platform))
+    (let [java-version    (System/getProperty "java.specification.version")
+          openjfx-version (str "openjfx" java-version)]
+      (swap! lein/default-profiles
+             #(assoc % :default (conj (:default %) (keyword openjfx-version))))
+      (symbol (str "fn-fx/fn-fx-" openjfx-version)))
+    (symbol "fn-fx/fn-fx-javafx")))
 
-(defproject fn-fx/fn-fx "0.5.0-SNAPSHOT"
+(defproject #=(project-name!) "0.5.0-SNAPSHOT"
   :description         "A declarative wrapper for JavaFX / OpenJFX"
   :url                 "https://github.com/fn-fx/fn-fx"
   :license             {:spdx-license-identifier "EPL-1.0"
@@ -25,7 +30,8 @@
                                          :plugins      [[lein-release  "1.1.3"]
                                                         [lein-licenses "0.2.2"]
                                                         [lein-codox    "0.10.5"]]}
-                        :openjfx11      {:dependencies [[org.openjfx/javafx-controls "11"]
+                        :openjfx11      ^:leaky   ; Ensure these dependencies "leak" through to the POM and JAR tasks
+                                        {:dependencies [[org.openjfx/javafx-controls "11"]
                                                         [org.openjfx/javafx-swing    "11"]
                                                         [org.openjfx/javafx-media    "11"]
                                                         [org.openjfx/javafx-fxml     "11"]

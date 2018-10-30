@@ -146,27 +146,28 @@ and diffing if the properties of the component haven't changed since the last re
 
 # JavaFX vs OpenJFX
 
-JavaFX is included in JRE versions 1.7u6 through 10, but was unbundled as of JRE 11.  It is instead available as a
-standalone library called [OpenJFX](https://openjfx.io/) in that version and beyond.
+JavaFX is included in JRE versions 1.7u6 through 10, but was unbundled as of JRE 11.  In that JRE version and beyond,
+these capabilities are instead provided by a separate library called [OpenJFX](https://openjfx.io/) that is not part of
+the default JRE installation.
 
-As a result of this backwards-compatibility-breaking change, you will need to ensure to include the OpenJFX dependencies
-if you're running on a JRE that doesn't bundle JavaFX (i.e. JRE v11+).
+As a result of this backwards-compatibility-breaking change, you will need to choose the right "edition" of `fn-fx`,
+based on the JRE version your code will ultimately run on.  The two editions, while identical from a developer's
+perspective, are deployed to Clojars under different names, to ensure that the correct dependencies are expressed for
+each case.
 
-These dependencies are:
+These editions are available as:
 
 ```clojure
-[fn-fx/fn-fx                 "0.5.0-SNAPSHOT"]   ; Or whatever the latest version of fn-fx/fn-fx is
-[org.openjfx/javafx-controls "11"]
-[org.openjfx/javafx-swing    "11"]
-[org.openjfx/javafx-media    "11"]
-[org.openjfx/javafx-fxml     "11"]
-[org.openjfx/javafx-web      "11"]
-[org.openjfx/javafx-graphics "11"]
+[fn-fx/fn-fx-javafx    "...version..."]   ; For JavaFX-equipped JREs (i.e. 1.7u6 through 10)
+[fn-fx/fn-fx-openjfx11 "...version..."]   ; To use OpenJFX 11 (which targets JRE 11)
 ```
 
-We hope to ship two "editions" of the library that hide this mess from you, the library consumer, but doing so has
-proven to be more complex than anticipated (see [issue #43](https://github.com/fn-fx/fn-fx/issues/43) for details), so
-for now we've kicked this can down the road to you, and humbly beg your forgiveness.
+The regrettably [tight coupling between OpenJFX and JRE versions](http://mail.openjdk.java.net/pipermail/openjfx-discuss/2018-October/000061.html)
+makes it more challenging for `fn-fx` to maintain both forward and backward compatibilty across JRE versions, but our
+intent is to attempt to maintain the maximum compatibilty possible, at least until JRE 11 is widely deployed.  Whether
+this continues to be done via "editions" as described here, or separate branches of `fn-fx` is an open question.  If
+you have suggestions / comments / preferences on this, please
+[let us know](https://github.com/fn-fx/fn-fx/issues/new?template=Support_question.md)!
 
 # License
 Copyright (c) 2016 Timothy Baldridge. All rights reserved.
