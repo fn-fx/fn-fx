@@ -56,4 +56,6 @@
                         ["releases"  {:url           "https://clojars.org/repo"
                                       :username      :env/clojars_username
                                       :password      :env/clojars_password}]]
-  :codox               {:source-uri "https://github.com/fn-fx/fn-fx/blob/master/{filepath}#L{line}"})
+  :codox               {:source-paths ["src"]
+                        :metadata     {:doc "FIXME: write docs"}
+                        :source-uri   "https://github.com/fn-fx/fn-fx/blob/master/{filepath}#L{line}"})
