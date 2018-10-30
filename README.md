@@ -216,7 +216,7 @@ user=>
 
 Not yet implemented, though this is being tracked as [issue #49](https://github.com/fn-fx/fn-fx/issues/49).  PRs welcome!
 
-### Making API Calls
+## Making API Calls from the REPL
 
 Once you're in a REPL you can make standard `fn-fx` API calls:
 
@@ -232,6 +232,46 @@ Note that the API docs are currently *\*cough\** "limited", so `(doc ...)` and `
 companions.  Issue #s [21](https://github.com/fn-fx/fn-fx/issues/21), [26](https://github.com/fn-fx/fn-fx/issues/26),
 [27](https://github.com/fn-fx/fn-fx/issues/27), and [28](https://github.com/fn-fx/fn-fx/issues/28) go into more detail on this,
 and any additional comments / feedback / PRs for documentation are welcome!
+
+## Running the Examples
+
+Note that the examples are not distributed in the artifacts deployed to Clojars, so to run those you'll need to clone the
+project locally, and run a REPL from within the cloned directory:
+
+```shell
+$ cd <directory where you like to put your GitHub clones>
+$ git clone https://github.com/fn-fx/fn-fx.git
+Cloning into 'fn-fx'...
+remote: Enumerating objects: 47, done.
+remote: Counting objects: 100% (47/47), done.
+remote: Compressing objects: 100% (27/27), done.
+remote: Total 550 (delta 23), reused 39 (delta 20), pack-reused 503
+Receiving objects: 100% (550/550), 301.67 KiB | 4.02 MiB/s, done.
+Resolving deltas: 100% (264/264), done.
+$ cd fn-fx
+$ lein repl
+nREPL server started on port 52005 on host 127.0.0.1 - nrepl://127.0.0.1:52005
+REPL-y 0.3.7, nREPL 0.2.12
+Clojure 1.9.0
+OpenJDK 64-Bit Server VM 11.0.1+13
+    Docs: (doc function-name-here)
+          (find-doc "part-of-name-here")
+  Source: (source function-name-here)
+ Javadoc: (javadoc java-object-or-class-here)
+    Exit: Control+D or (exit) or (quit)
+ Results: Stored in vars *1, *2, *3, an exception in *e
+
+user=>
+```
+
+Once you have a REPL up, the examples are run in a variety of different ways:
+
+* **01 Hello world**: `(require '[getting-started.01-hello-word])`
+* **02 Form**: `(require '[getting-started.02-form :as form]) (form/-main)`
+* **Shapes 3d**: `(require '[other-examples.shapes-3d :as shapes-3d]) (shapes-3d/-main)`
+* **Todo**: `(require '[other-examples.todo :as todo]) (todo/-main)`
+
+Each example will open a window that can be closed at any time (and reopened by calling `-main` again).
 
 # License
 Copyright (c) 2016 Timothy Baldridge. All rights reserved.
