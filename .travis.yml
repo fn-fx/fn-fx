@@ -11,6 +11,8 @@ env:
     - secure: "lVAXJv5hJGRbC//Gaa84xB6fB9PCs6m+PoXoPC1AdK7iC/JXQKmpA/dkrwDvGfh5JlG7gmzQJJSVtEO6Rgxndr+fw5AtdTfPQelvLReI9Ly1/SwviiG7uXeD3pMQr/fz1F0pUqssBd4Rkobe5mtsW7Hcsw63Sd4XCgsc4ZiweINNEyq3EhGMLbobNOcPOHqxNNyR0Nrm2hU7bdKcJ25TegR2/mUbs2cWB+jVjyPrFzX6F9avUIM6DqFcLJ73UJwF5SBDAVWn3psLVfV+DoV1vD3LfztMSjHVwmAVCuSCEWbIrrvox4aieThoZeRW5vyIdQ0Ki0TWL/CfKplNt06DPvZadNkzm3wYPx8r08e5jLUoMUa+J4b55bxNcIhqS9XBqJ6XZvd4WcNxynoFuGQfWbumgdrMCc4wj+BGWFAAnB0Ug2QA/eopbrKPzLL7o+/+tZYud2JFZ2441lnJQeNZd2oR9Lf4HrylKo2ZIIYufp4pTyBa+1Lay6gvqaDew1UDNxR+o7X7OgWXYctmN9+1Qx9pb8yQAZZk8ITQjgqY8FkBUuMSAyjAnfF0zjbrkbRB70NeL2hqGpDPPGGrONuFgwt8vX7hpKXY3wp0IYK5L6TZQiRPGUYhyFMASEV6AdgtKjsu4HhnCwsyuwiMqVpceMDZ0lpOibhjV0T9LL2XHoQ="
     # CLOJARS_PASSWORD
     - secure: "rMRoXv9nUWKaHaB7bvhn41qx/KqUnKn/D6afzqHT6oI2onBBs91GXHcBFkEvx+85Mijx6wz4xzVWNcAtdWxxxkkjGRZ8aOuqKK4uFXZ7Crak3mis5poMepe4fPjWvkytwNHWS6KsSNbuajBySTNpDAkQiK8ET5YGAl+bVFDALUeiCd1PlYXOi/ls5RKEDZGEOALSIOPfBhV2uqgECAzu8aOq5aye+z79j4EjC4JL8spRJyfHZoPrSqhL1cklXqfz4rqNZc2ixsasJD/O1jRXtX1sOnXP8g91u1Ndl1BETrcTfaHVh6y2Q6KdbVIld9JNlc38tYNUmYtv23N+h/VXsAZW+lpL0xXGyxeZf7NbQT6z3wRg3cAyyNHXiboF4EVjdNhgcW8u0J+yODhoO0KStHuZaGwbE2l+2ys5SRQTnKmNyi9NdTeI61Au18CYk/z/1Lm7kGxnGCsX3KLckpORUdBR9ZpgGdMWf7T5/xjXyz1vfBIXfpUrVFewfHd7QvAitz5Ip+jlphZiClqMeb2zYmvT204LzhnoxRkhyOE3zxLVE9aMTPLXMV6fByHsXHyEG5hc+Rhvq4401/uowzVlekmDpJAqZbRqfpNsLA7yXav8Rk+gxdKlThkG4FokVGHm2UiOsVrVPyGSHcdRngphmP4PzID0EiOE6yl7/MK/YKM="
+    # GITHUB_TOKEN
+    - secure: "U0GXi7UkXcdQVkAx7Zog5rMtmj57thEAZjJo+94kZr35RJ22sWSX1n3GTOsfrGfy8JOFt0tiR6beQdHkApRUZsu6EbmbmnFDNhvMmLcWI6Ppp9vHC9rwT2wBtEIxJDzGh98DU2Ooyw/Ob+/7FmHb/jEGFRm22iS56IdeQ7svl4tMggyFhf79UsKv/o7HoirZkwCOkxl7rY45Q6s55fY7qo5IQb8c+y3NhLKil0JGdySDKUns/1T/GLQx/skvpgN+QLaU2BCVlkpQsYCRBuOJYIsCxStsq6rcarK0ePonwofGD9m9/iH9DnJsVrU1NlihTGcpN7U9y2MZQF3wZVDU5FRY7ZsIbS+jKw6pouby1cs0poA+0pqkGAHHbdzXLcLc7q1STlRyTLOC92Fu5noeNaJk5cexdZ/DwBcoAphLc4pCa+5DBvXSXNL1FVnbQI9WUXj63ET74vJdrRZ+Wj+/HK0NRxrxQgFtEXjOI0e9jqxolwAJ1Y4WaKsUw3q4fdK+a7GRw1QBv+neHhzJSvHv+b0OjhjYWSbCT3PcDtRKd+M8KNa/1Qc5wlefsCxhLoZeedUm4AZHc9Ut2kozySM+A8B+CsDdW1TY4KpFITFmIsypv2lp1s+5mdZv3a8DOI0Cisqtk7ywtuv8JtPdTZGr5Z+izbkT/vtHMtwlDLgnRwE="
 
 # Monocle seems pretty unreliable, so start a virtual frame buffer instead
 before_install:
@@ -21,15 +23,32 @@ script:
   - lein do version, test
 
 deploy:
+  # Deploy JavaFX artifact to Clojars
   - provider: script
     skip_cleanup: true
     script: lein deploy
     on:
       branch: master
       jdk: oraclejdk8
+  # Deploy OpenJFX11 artifact to Clojars
   - provider: script
     skip_cleanup: true
     script: lein deploy
+    on:
+      branch: master
+      jdk: openjdk11
+  # Generate documentation
+  - provider: script
+    skip_cleanup: true
+    script: lein codox
+    on:
+      branch: master
+      jdk: openjdk11
+  # Deploy documentation
+  - provider: pages
+    skip_cleanup: true
+    github_token: $GITHUB_TOKEN
+    local_dir: target/doc
     on:
       branch: master
       jdk: openjdk11
