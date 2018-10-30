@@ -44,6 +44,134 @@ optional differ function. The render method on this component is only invoked wh
 change. `defui` is most often used to optimize re-rendering as whole sections of the UI can be ignored during rendering
 and diffing if the properties of the component haven't changed since the last render cycle.
 
+# Usage
+
+## Important note regarding JavaFX vs OpenJFX
+
+JavaFX is included in JRE versions 1.7u6 through 10, but was unbundled as of JRE 11.  In that JRE version and beyond,
+these capabilities are instead provided by a separate library called [OpenJFX](https://openjfx.io/) that is not part of
+the default JRE installation.
+
+In an attempt to hide these backwards-compatibility-breaking changes from the library user to the maximum extent possible,
+`fn-fx` is provided as multiple artifacts in Clojars:
+1. **`fn-fx-javafx`** - for code that targets JRE versions that bundle JavaFX (i.e. 1.7u6 through 10)
+2. **`fn-fx-openjfx##`** - for code that targets JRE versions that do not bundle JavaFX (i.e. 11 and up).  Note that "##" is a specific number (currently only "11" is provided, yielding `fn-fx-openjfx11`)
+
+Although these artifacts are code-identical, they have different upstream dependencies that are JRE-version-specific, so
+please make sure you select the correct artifact based on the version of the JRE that will be used **at runtime**.
+
+The regrettably [tight coupling between OpenJFX and JRE versions](http://mail.openjdk.java.net/pipermail/openjfx-discuss/2018-October/000061.html)
+makes it more challenging for the project to maintain both forward and backward compatibility across JRE versions, but our
+intent is to maintain the broadest practical compatibility, at least until JRE 11+ is widely deployed.  Whether this continues
+to be done via multiple artifacts, or some other mechanism is an open question.  If you have suggestions / comments / preferences
+on this, please [let us know](https://github.com/fn-fx/fn-fx/issues/new?template=Support_question.md)!
+
+## Trying the Library Out
+
+### With `lein-try`
+
+Kicking the tyres is a snap with the handy [`lein-try`](https://github.com/avescodes/lein-try) plugin:
+
+```shell
+$ lein try fn-fx/fn-fx-openjfx11 "0.5.0-SNAPSHOT"   # If you're running JRE 11
+$ lein try fn-fx/fn-fx-javafx "0.5.0-SNAPSHOT"      # If you're running on JRE 1.7u6-10
+```
+
+### With a Placeholder Project
+
+Or, if you'd rather not use `lein-try`, you could create a new folder and put a `project.clj` file in it, something like this:
+
+```clojure
+(defproject your-name/my-first-fn-fx-project "0.1.0-SNAPSHOT"
+  :description      "My first fn(fx) project"
+  :min-lein-version "2.8.1"
+  :dependencies     [[org.clojure/clojure "1.9.0"]
+                     ; Pick one, and only one, of the following dependencies:
+                     [fn-fx/fn-fx-openjfx11 "0.5.0-SNAPSHOT"]    ; If you're running JRE 11
+                     [fn-fx/fn-fx-javafx "0.5.0-SNAPSHOT"]       ; If you're running JRE 1.7u6-10
+])
+```
+
+Then start a REPL from that directory:
+
+```shell
+$ lein repl
+nREPL server started on port 55554 on host 127.0.0.1 - nrepl://127.0.0.1:55554
+REPL-y 0.3.7, nREPL 0.2.12
+Clojure 1.9.0
+OpenJDK 64-Bit Server VM 11.0.1+13
+    Docs: (doc function-name-here)
+          (find-doc "part-of-name-here")
+  Source: (source function-name-here)
+ Javadoc: (javadoc java-object-or-class-here)
+    Exit: Control+D or (exit) or (quit)
+ Results: Stored in vars *1, *2, *3, an exception in *e
+
+user=> 
+```
+
+### Using the Clojure Command Line Tools
+
+Not yet implemented, though this is being tracked as [issue #49](https://github.com/fn-fx/fn-fx/issues/49).  PRs welcome!
+
+## Making API Calls from the REPL
+
+Once you're in a REPL you can make standard `fn-fx` API calls:
+
+```clojure
+user=> (require '[fn-fx.fx-dom :as dom])
+nil
+user=> (require '[fn-fx.controls :as ui])
+nil
+user=> ; Do awesome GUI stuff here!
+```
+
+[API documentation is published here](https://fn-fx.github.io/fn-fx/), but note that these are currently *\*cough\**
+"limited" due to a lack of docstrings in the code.  Issue #s [21](https://github.com/fn-fx/fn-fx/issues/21),
+[26](https://github.com/fn-fx/fn-fx/issues/26), [27](https://github.com/fn-fx/fn-fx/issues/27), and
+[28](https://github.com/fn-fx/fn-fx/issues/28) go into more detail on this, and any additional comments / feedback / PRs
+for documentation are welcome!
+
+## Running the Examples
+
+Note that [the examples](https://github.com/fn-fx/fn-fx/tree/master/examples) are not deployed to Clojars, so to run
+those you'll need to clone the project locally, and run a REPL from within the cloned directory:
+
+```
+$ cd <directory where you like to put your GitHub clones>
+$ git clone https://github.com/fn-fx/fn-fx.git
+Cloning into 'fn-fx'...
+remote: Enumerating objects: 47, done.
+remote: Counting objects: 100% (47/47), done.
+remote: Compressing objects: 100% (27/27), done.
+remote: Total 550 (delta 23), reused 39 (delta 20), pack-reused 503
+Receiving objects: 100% (550/550), 301.67 KiB | 4.02 MiB/s, done.
+Resolving deltas: 100% (264/264), done.
+$ cd fn-fx
+$ lein repl
+nREPL server started on port 52005 on host 127.0.0.1 - nrepl://127.0.0.1:52005
+REPL-y 0.3.7, nREPL 0.2.12
+Clojure 1.9.0
+OpenJDK 64-Bit Server VM 11.0.1+13
+    Docs: (doc function-name-here)
+          (find-doc "part-of-name-here")
+  Source: (source function-name-here)
+ Javadoc: (javadoc java-object-or-class-here)
+    Exit: Control+D or (exit) or (quit)
+ Results: Stored in vars *1, *2, *3, an exception in *e
+
+user=>
+```
+
+Once you have a REPL up within the cloned directory, the examples may be run as follows:
+
+* **[01 Hello world](https://github.com/fn-fx/fn-fx/blob/master/examples/getting_started/01_hello_word.clj)**: `(require '[getting-started.01-hello-word])`
+* **[02 Form](https://github.com/fn-fx/fn-fx/blob/master/examples/getting_started/02_form.clj)**: `(require '[getting-started.02-form :as form]) (form/-main)`
+* **[Shapes 3D](https://github.com/fn-fx/fn-fx/blob/master/examples/other_examples/shapes_3d.clj)**: `(require '[other-examples.shapes-3d :as shapes-3d]) (shapes-3d/-main)`
+* **[Todo](https://github.com/fn-fx/fn-fx/blob/master/examples/other_examples/todo.clj)**: `(require '[other-examples.todo :as todo]) (todo/-main)`
+
+Each example will open a window that can be closed at any time (and reopened by calling `-main` again).
+
 # Example
 
 ```clojure
@@ -145,133 +273,6 @@ and diffing if the properties of the component haven't changed since the last re
                                         (dom/update-app old-ui (stage @data-state))))))))
 
 ```
-
-# Usage
-
-## Important note regarding JavaFX vs OpenJFX
-
-JavaFX is included in JRE versions 1.7u6 through 10, but was unbundled as of JRE 11.  In that JRE version and beyond,
-these capabilities are instead provided by a separate library called [OpenJFX](https://openjfx.io/) that is not part of
-the default JRE installation.
-
-In an attempt to hide these backwards-compatibility-breaking changes from the library user to the maximum extent possible,
-`fn-fx` is provided as multiple artifacts in Clojars:
-1. **`fn-fx-javafx`** - for code that targets JRE versions that bundle JavaFX (i.e. 1.7u6 through 10)
-2. **`fn-fx-openjfx##`** - for code that targets JRE versions that do not bundle JavaFX (i.e. 11 and up).  Note that "##" is a specific number (currently only "11" is provided, yielding `fn-fx-openjfx11`)
-
-Although these artifacts are code-identical, they have different upstream dependencies that are JRE-version-specific, so
-please make sure you select the correct artifact based on the version of the JRE that will be used **at runtime**.
-
-The regrettably [tight coupling between OpenJFX and JRE versions](http://mail.openjdk.java.net/pipermail/openjfx-discuss/2018-October/000061.html)
-makes it more challenging for the project to maintain both forward and backward compatibility across JRE versions, but our
-intent is to maintain the broadest practical compatibility, at least until JRE 11+ is widely deployed.  Whether this continues
-to be done via multiple artifacts, or some other mechanism is an open question.  If you have suggestions / comments / preferences
-on this, please [let us know](https://github.com/fn-fx/fn-fx/issues/new?template=Support_question.md)!
-
-## Trying the Library Out
-
-### With `lein-try`
-
-Kicking the tyres is a snap with the handy [`lein-try`](https://github.com/avescodes/lein-try) plugin:
-
-```shell
-$ lein try fn-fx/fn-fx-openjfx11 "0.5.0-SNAPSHOT"   # If you're running JRE 11
-$ lein try fn-fx/fn-fx-javafx "0.5.0-SNAPSHOT"      # If you're running on JRE 1.7u6-10
-```
-
-### With a Placeholder Project
-
-Or, if you'd rather not use `lein-try`, you could create a new folder and put a `project.clj` file in it, something like this:
-
-```clojure
-(defproject your-name/my-first-fn-fx-project "0.1.0-SNAPSHOT"
-  :description      "My first fn(fx) project"
-  :min-lein-version "2.8.1"
-  :dependencies     [[org.clojure/clojure "1.9.0"]
-                     ; Pick one, and only one, of the following dependencies:
-                     [fn-fx/fn-fx-openjfx11 "0.5.0-SNAPSHOT"]    ; If you're running JRE 11
-                     [fn-fx/fn-fx-javafx "0.5.0-SNAPSHOT"]       ; If you're running JRE 1.7u6-10
-])
-```
-
-Then start a REPL from that directory:
-
-```shell
-$ lein repl
-nREPL server started on port 55554 on host 127.0.0.1 - nrepl://127.0.0.1:55554
-REPL-y 0.3.7, nREPL 0.2.12
-Clojure 1.9.0
-OpenJDK 64-Bit Server VM 11.0.1+13
-    Docs: (doc function-name-here)
-          (find-doc "part-of-name-here")
-  Source: (source function-name-here)
- Javadoc: (javadoc java-object-or-class-here)
-    Exit: Control+D or (exit) or (quit)
- Results: Stored in vars *1, *2, *3, an exception in *e
-
-user=> 
-```
-
-### Using the Clojure Command Line Tools
-
-Not yet implemented, though this is being tracked as [issue #49](https://github.com/fn-fx/fn-fx/issues/49).  PRs welcome!
-
-## Making API Calls from the REPL
-
-Once you're in a REPL you can make standard `fn-fx` API calls:
-
-```clojure
-user=> (require '[fn-fx.fx-dom :as dom])
-nil
-user=> (require '[fn-fx.controls :as ui])
-nil
-user=> ; Do awesome GUI stuff here!
-```
-
-Note that the API docs are currently *\*cough\** "limited", so `(doc ...)` and `(find-doc "...")` will be your constant
-companions.  Issue #s [21](https://github.com/fn-fx/fn-fx/issues/21), [26](https://github.com/fn-fx/fn-fx/issues/26),
-[27](https://github.com/fn-fx/fn-fx/issues/27), and [28](https://github.com/fn-fx/fn-fx/issues/28) go into more detail on this,
-and any additional comments / feedback / PRs for documentation are welcome!
-
-## Running the Examples
-
-Note that the examples are not distributed in the artifacts deployed to Clojars, so to run those you'll need to clone the
-project locally, and run a REPL from within the cloned directory:
-
-```shell
-$ cd <directory where you like to put your GitHub clones>
-$ git clone https://github.com/fn-fx/fn-fx.git
-Cloning into 'fn-fx'...
-remote: Enumerating objects: 47, done.
-remote: Counting objects: 100% (47/47), done.
-remote: Compressing objects: 100% (27/27), done.
-remote: Total 550 (delta 23), reused 39 (delta 20), pack-reused 503
-Receiving objects: 100% (550/550), 301.67 KiB | 4.02 MiB/s, done.
-Resolving deltas: 100% (264/264), done.
-$ cd fn-fx
-$ lein repl
-nREPL server started on port 52005 on host 127.0.0.1 - nrepl://127.0.0.1:52005
-REPL-y 0.3.7, nREPL 0.2.12
-Clojure 1.9.0
-OpenJDK 64-Bit Server VM 11.0.1+13
-    Docs: (doc function-name-here)
-          (find-doc "part-of-name-here")
-  Source: (source function-name-here)
- Javadoc: (javadoc java-object-or-class-here)
-    Exit: Control+D or (exit) or (quit)
- Results: Stored in vars *1, *2, *3, an exception in *e
-
-user=>
-```
-
-Once you have a REPL up, the examples are run in a variety of different ways:
-
-* **01 Hello world**: `(require '[getting-started.01-hello-word])`
-* **02 Form**: `(require '[getting-started.02-form :as form]) (form/-main)`
-* **Shapes 3d**: `(require '[other-examples.shapes-3d :as shapes-3d]) (shapes-3d/-main)`
-* **Todo**: `(require '[other-examples.todo :as todo]) (todo/-main)`
-
-Each example will open a window that can be closed at any time (and reopened by calling `-main` again).
 
 # License
 Copyright (c) 2016 Timothy Baldridge. All rights reserved.
