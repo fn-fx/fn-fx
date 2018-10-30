@@ -39,13 +39,13 @@ deploy:
       jdk: openjdk11
 # Doc generation currently hangs on TravisCI (presumably because codox seems to execute the code, which causes UIs to appear, which is
 # no bueno on TravisCI...), so this is commented out until such time as someone can troubleshoot
-  # Generate documentation
-  - provider: script
-    skip_cleanup: true
-    script: lein codox
-    on:
-      branch: master
-      jdk: openjdk11
+#  # Generate documentation
+#  - provider: script
+#    skip_cleanup: true
+#    script: lein codox
+#    on:
+#      branch: master
+#      jdk: openjdk11
 #  # Deploy documentation
 #  - provider: pages
 #    skip_cleanup: true
