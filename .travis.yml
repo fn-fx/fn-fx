@@ -20,11 +20,16 @@ script:
   - "export DISPLAY=:99.0"
   - lein do version, test
 
-# Commented out while we await https://github.com/clojars/clojars-web/issues/708
-#deploy:
-#  - provider: script
-#    skip_cleanup: true
-#    script: lein deploy
-#    on:
-#      branch: master
-#      jdk: openjdk11
+deploy:
+  - provider: script
+    skip_cleanup: true
+    script: lein deploy
+    on:
+      branch: master
+      jdk: oraclejdk8
+  - provider: script
+    skip_cleanup: true
+    script: lein deploy
+    on:
+      branch: master
+      jdk: openjdk11
