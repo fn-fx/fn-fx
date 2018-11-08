@@ -31,12 +31,12 @@
                                                         [lein-licenses "0.2.2"]
                                                         [lein-codox    "0.10.5"]]}
                         :openjfx11      ^:leaky   ; Ensure these dependencies "leak" through to the POM and JAR tasks
-                                        {:dependencies [[org.openjfx/javafx-controls "11"]
-                                                        [org.openjfx/javafx-swing    "11"]
-                                                        [org.openjfx/javafx-media    "11"]
-                                                        [org.openjfx/javafx-fxml     "11"]
-                                                        [org.openjfx/javafx-web      "11"]
-                                                        [org.openjfx/javafx-graphics "11"]]}
+                                        {:dependencies [[org.openjfx/javafx-controls "11.0.1"]
+                                                        [org.openjfx/javafx-swing    "11.0.1"]
+                                                        [org.openjfx/javafx-media    "11.0.1"]
+                                                        [org.openjfx/javafx-fxml     "11.0.1"]
+                                                        [org.openjfx/javafx-web      "11.0.1"]
+                                                        [org.openjfx/javafx-graphics "11.0.1"]]}
 ; Monocle seems pretty unreliable, especially on older JVMs, so we use Xvfb for CI instead.  I've left these details here for now in case we want to reintroduce Monocle at some point.
 ;                     :openjfx11-test    {:dependencies [[org.testfx/openjfx-monocle  "jdk-11+26" :exclusions [org.openjfx/javafx-base
 ;                                                                                                              org.openjfx/javafx-controls
