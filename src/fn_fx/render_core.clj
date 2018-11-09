@@ -291,36 +291,45 @@
       include)))
 
 
+;; This is the first attempt to implement chaining method calls, which we need for listeners.
+;; There is problem here. Since we use reflection each method is taken from the return type of the previous method.
+;; But because of generics, we sometimes get Object as return type, instead of the actual class.
+;; For instance the following works:
+;;     (get-methods javafx.scene.control.TreeView ["getSelectionModel" "getSelectedItem"])
+;; but this does not:
+;;     (get-methods javafx.scene.control.TreeView ["getSelectionModel" "getSelectedItem" "getValue"])
+;; Therefore we use direct dynamic invocation (see invoke-comp)
+;(defn- get-methods [^Class class method-names]
+;  "Returns a vector of methods that need to be composed in order to get to the desired property."
+;  (let [empty-array (make-array Class 0)]
+;
+;    (loop [class class
+;           method-names method-names
+;           result []]
+;      (if (empty? method-names)
+;        result
+;        (let [m (.getMethod class (first method-names) empty-array)
+;              return-type (.getGenericReturnType m)]
+;          (println "return-type" return-type)
+;          (recur (.getReturnType m) (rest method-names) (conj result m))))
+;      )))
 
-(defn- get-prop-methods [^Class class prop]
-  "Returns a vector of methods that need to be composed in order to get to the desired property.
-  For example, for :selection-model.selected-item the methods \"getSelectionModel\" and \"selectedItemProperty\" will be returned (for the given class)."
-  (let [empty-array (make-array Class 0)
-        method-names (str/split (name prop) #"\.")
-        last-index (dec (count method-names))
-        method-names (map-indexed (fn [i method-name]
-                                    (let [^String mn (util/kabob->camel method-name)]
-                                      (if (= last-index i)
-                                        (str mn "Property")
-                                        (str "get" (Character/toUpperCase (.charAt mn 0)) (.substring mn 1)))))
-                                  method-names)]
+(def ^:private empty-class-array (make-array Class 0))
+(def ^:private empty-object-array (make-array Object 0))
 
-    (loop [class class
-           method-names method-names
-           result []]
-      (if (empty? method-names)
+;; TODO This could be optimized via a macro, if the keyword from which the method names come are literals
+(defn invoke-comp [method-names obj]
+  "Takes a sequence of methods and an instance and invokes a composition of the methods
+  (each method is invoked on the result of the previous method."
+  (loop [method-names method-names
+         obj obj]
+    (let [^Class klass (.getClass obj)
+          ^Method method (.getMethod klass (first method-names) empty-class-array)
+          result (.invoke method obj empty-object-array)
+          remaining (rest method-names)]
+      (if (empty? remaining)
         result
-        (let [m (.getMethod class (first method-names) empty-array)]
-          (recur (.getReturnType m) (rest method-names) (conj result m))))
-      )))
-
-
-
-(defn- invoke-comp [methods inst]
-  (if (empty? methods)
-    inst
-    (invoke-comp (rest methods)
-                 (.invoke ^Method (first methods) inst (make-array Class 0)))))
+        (recur remaining result)))))
 
 
 
@@ -328,9 +337,19 @@
   (let [;prop-name   (str (util/kabob->camel (name prop)) "Property")
         ;empty-array (make-array Class 0)
         ;prop        (.getMethod class prop-name empty-array)
-        methods (get-prop-methods class prop)]
+        method-names  (str/split (name prop) #"\.")
+        last-index (dec (count method-names))
+        method-names  (map-indexed (fn [i method-name]
+                                     (let [^String mn (util/kabob->camel method-name)]
+                                       (if (= last-index i)
+                                         (str mn "Property")
+                                         (str "get" (Character/toUpperCase (.charAt mn 0)) (.substring mn 1)))))
+                                   method-names)
+        ;methods       (get-methods class method-names)
+        ]
+
     (fn [inst val]
-      (let [^ObservableValue ob (invoke-comp methods inst)                    ;(.invoke ^Method prop inst empty-array)
+      (let [^ObservableValue ob (invoke-comp method-names inst)                    ;(.invoke ^Method prop inst empty-array)
             listeners           (get-listeners listener-map inst)
             handler-fn          *handler-fn*
             listener            (reify ChangeListener
@@ -343,21 +362,37 @@
         (vswap! listeners assoc prop listener)
         (.addListener ob listener)))))
 
+
+
 (defn prop->getter-name [prop]
   (if (.endsWith (name prop) "?")
     (str "is" (util/kabob->class (str/replace (name prop) "?" "")))
     (str "get" (util/kabob->class (name prop)))))
 
+
+
 (defn get-getter [^Class klass prop]
-  (let [prop-name      (prop->getter-name prop)
-        ^Method method (->> (.getMethods klass)
-                            (filter #(= prop-name (.getName ^Method %)))
-                            (filter #(zero? (count (.getParameters ^Method %))))
-                            first)
-        arr            (make-array Object 0)]
-    (.setAccessible method true)
+
+  "Takes a class and a keyword representing a property and returns a function which takes an instance of that class and returns its property value.
+  Nested properties are supported via the dot notation, e.g. :selection-model.selected-item will result in getSelectionModel().getSelectedItem() beeing called on the instance."
+
+  (let [class-arr       (make-array Class 0)
+        props           (str/split (name prop) #"\.")
+        method-names      (map prop->getter-name props)
+
+        ;methods         (get-methods klass method-names)
+
+        ;^Method method (->> (.getMethods klass)
+        ;                    (filter #(= prop-name (.getName ^Method %)))
+        ;                    (filter #(zero? (count (.getParameters ^Method %))))
+        ;                    first)
+        ]
+
+    ;not sure why we need to make it accessible
+    ;(.setAccessible method true)
+
     (fn [inst]
-      (.invoke method inst arr))))
+      (invoke-comp method-names inst))))
 
 (defn register-enum-converter [^Class klass]
   (let [vals (into {}
