@@ -1,8 +1,9 @@
 language: clojure
 lein: 2.8.1
 jdk:
-  - oraclejdk8   # For JavaFX
-  - openjdk11    # For OpenJFX
+  - oraclejdk8   # JavaFX
+  - oraclejdk11  # OpenJFX
+  - openjdk11    # OpenJFX
 
 env:
   global:
@@ -19,7 +20,7 @@ before_install:
   - "export DISPLAY=:99.0"
 
 script:
-  - lein do version, test
+  - lein with-profile +1.8:+1.9:+1.10 test
 
 deploy:
   # Deploy JavaFX artifact to Clojars
