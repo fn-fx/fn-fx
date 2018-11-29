@@ -46,13 +46,28 @@ and diffing if the properties of the component haven't changed since the last re
 
 # Usage
 
-## Important note regarding JavaFX vs OpenJFX
+## Tested Versions
 
-JavaFX is included in JRE versions 1.7u6 through 10, but was unbundled as of JRE 11.  In that JRE version and beyond,
-these capabilities are instead provided by a separate library called [OpenJFX](https://openjfx.io/) that is not part of
-the default JRE installation.
+`fn-fx` is [tested on](https://travis-ci.com/fn-fx/fn-fx):
 
-In an attempt to hide these backwards-compatibility-breaking changes from the library user to the maximum extent possible,
+|                           |  JVM 1.8 (Oracle) | JVM 1.8 (OpenJDK) | JVM 11 (Oracle) | JVM 11 (OpenJDK) |
+|                      ---: |   :---:           |  :---:            |  :---:          |  :---:           |
+| Clojure 1.7.0             | ❌<sup>1</sup>    | ❌<sup>1,2</sup>  | ❌<sup>1</sup> | ❌<sup>1</sup>   |
+| Clojure 1.8.0             | ✅                | ❌<sup>2</sup>    | ✅             | ✅               |
+| Clojure 1.9.0             | ✅                | ❌<sup>2</sup>    | ✅             | ✅               |
+| Clojure 1.10.0 (snapshot) | ✅                | ❌<sup>2</sup>    | ✅             | ✅               |
+
+<sup>1</sup> For now we've decided to only test back as far as Clojure 1.8.0.  If anyone needs this tested on older versions of Clojure, PRs are welcome!
+
+<sup>2</sup> Currently, [there is no easy way to obtain OpenJFX for OpenJDK 1.8](https://github.com/fn-fx/fn-fx/issues/71), so it is not supported.
+
+## A Note on JavaFX vs OpenJFX
+
+JavaFX was included in Oracle JRE versions 1.7u6 through 10, but has never been bundled in any version of OpenJDK, nor is
+it bundled in any edition of JRE (Oracle or OpenJDK) from 11 onward.  In JRE 11 and up, these capabilities are instead provided by a
+separate library called [OpenJFX](https://openjfx.io/) that is not part of the default JRE installation.
+
+In an attempt to hide this backwards-compatibility-breaking mess from the library user to the maximum extent possible,
 `fn-fx` is provided as multiple artifacts in Clojars:
 1. **`fn-fx-javafx`** - for code that targets JRE versions that bundle JavaFX (i.e. 1.7u6 through 10)
 2. **`fn-fx-openjfx##`** - for code that targets JRE versions that do not bundle JavaFX (i.e. 11 and up).  Note that "##" is a specific number (currently only "11" is provided, yielding `fn-fx-openjfx11`)

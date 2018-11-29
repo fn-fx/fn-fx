@@ -30,6 +30,9 @@
                                          :plugins      [[lein-release  "1.1.3"]
                                                         [lein-licenses "0.2.2"]
                                                         [lein-codox    "0.10.5"]]}
+                        :1.8            {:dependencies [[org.clojure/clojure "1.8.0"]]}
+                        :1.9            {:dependencies [[org.clojure/clojure "1.9.0"]]}
+                        :1.10           {:dependencies [[org.clojure/clojure "1.10.0-master-SNAPSHOT"]]}
                         :openjfx11      ^:leaky   ; Ensure these dependencies "leak" through to the POM and JAR tasks
                                         {:dependencies [[org.openjfx/javafx-controls "11.0.1"]
                                                         [org.openjfx/javafx-swing    "11.0.1"]
