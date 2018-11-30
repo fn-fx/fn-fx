@@ -90,8 +90,8 @@ on this, please [let us know](https://github.com/fn-fx/fn-fx/issues/new?template
 Kicking the tyres is a snap with the handy [`lein-try`](https://github.com/avescodes/lein-try) plugin:
 
 ```shell
-$ lein try fn-fx/fn-fx-openjfx11 "0.5.0-SNAPSHOT"   # If you're running JRE 11
-$ lein try fn-fx/fn-fx-javafx "0.5.0-SNAPSHOT"      # If you're running on JRE 1.7u6-10
+$ lein try fn-fx/fn-fx-openjfx11 "0.5.0-SNAPSHOT"   # If you're running JRE 11 (Oracle or OpenJDK)
+$ lein try fn-fx/fn-fx-javafx "0.5.0-SNAPSHOT"      # If you're running on an Oracle JRE, versions 1.7u6 to 10
 ```
 
 ### With a Placeholder Project
@@ -104,8 +104,8 @@ Or, if you'd rather not use `lein-try`, you could create a new folder and put a 
   :min-lein-version "2.8.1"
   :dependencies     [[org.clojure/clojure "1.9.0"]
                      ; Pick one, and only one, of the following dependencies:
-                     [fn-fx/fn-fx-openjfx11 "0.5.0-SNAPSHOT"]    ; If you're running JRE 11
-                     [fn-fx/fn-fx-javafx "0.5.0-SNAPSHOT"]       ; If you're running JRE 1.7u6-10
+                     [fn-fx/fn-fx-openjfx11 "0.5.0-SNAPSHOT"]    ; If you're running JRE 11 (Oracle or OpenJDK)
+                     [fn-fx/fn-fx-javafx "0.5.0-SNAPSHOT"]       ; If you're running on an Oracle JRE, versions 1.7u6 to 10
 ])
 ```
 
