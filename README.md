@@ -46,23 +46,40 @@ and diffing if the properties of the component haven't changed since the last re
 
 # Usage
 
-## Important note regarding JavaFX vs OpenJFX
+## Tested Versions
 
-JavaFX is included in JRE versions 1.7u6 through 10, but was unbundled as of JRE 11.  In that JRE version and beyond,
-these capabilities are instead provided by a separate library called [OpenJFX](https://openjfx.io/) that is not part of
-the default JRE installation.
+Before using `fn-fx`, please make sure you're using a JRE version that has been [tested](https://travis-ci.com/fn-fx/fn-fx)
+and is known to work.  Here's the current test matrix:
 
-In an attempt to hide these backwards-compatibility-breaking changes from the library user to the maximum extent possible,
-`fn-fx` is provided as multiple artifacts in Clojars:
-1. **`fn-fx-javafx`** - for code that targets JRE versions that bundle JavaFX (i.e. 1.7u6 through 10)
-2. **`fn-fx-openjfx##`** - for code that targets JRE versions that do not bundle JavaFX (i.e. 11 and up).  Note that "##" is a specific number (currently only "11" is provided, yielding `fn-fx-openjfx11`)
+|                           |  JRE 1.8 (Oracle) | JRE 1.8 (OpenJDK) | JRE 11 (Oracle) | JRE 11 (OpenJDK) |
+|                      ---: |   :---:           |  :---:            |  :---:          |  :---:           |
+| Clojure 1.7.0             | ❌<sup>1</sup>    | ❌<sup>1,2</sup>  | ❌<sup>1</sup> | ❌<sup>1</sup>   |
+| Clojure 1.8.0             | ✅                | ❌<sup>2</sup>    | ✅             | ✅               |
+| Clojure 1.9.0             | ✅                | ❌<sup>2</sup>    | ✅             | ✅               |
+| Clojure 1.10.0 (snapshot) | ✅                | ❌<sup>2</sup>    | ✅             | ✅               |
+
+<sup>1</sup> For now we've decided to only test back as far as Clojure 1.8.0.  If anyone needs this tested on older versions of Clojure, PRs are welcome!
+
+<sup>2</sup> Currently, [there is no easy way to obtain OpenJFX for OpenJDK 1.8](https://github.com/fn-fx/fn-fx/issues/71), so it is not supported.  If anyone has ideas on how to easily add this support, please comment on issue #71.
+
+## A Note on JavaFX vs OpenJFX
+
+JavaFX was included in Oracle JRE versions 1.7u6 through 10, but has never been bundled in any version of OpenJDK, nor is
+it bundled in any edition of the JRE (Oracle or OpenJDK) from version 11 onward.  In JRE 11 and up, these capabilities are
+instead provided by a separate library called [OpenJFX](https://openjfx.io/) that is not part of the default JRE installation.
+
+Although we've attempted to hide this compatibility mess from the library user to the maximum extent possible, we were
+forced to provide multiple `fn-fx` artifacts in Clojars:
+1. **`fn-fx-javafx`** - for code that targets JREs that bundle JavaFX (i.e. Oracle JRE versions 1.7u6 through 10)
+2. **`fn-fx-openjfx##`** - for code that targets JREs that do not bundle JavaFX (i.e. OpenJDK and Oracle JRE versions 11 and up).  Note that "##" is a specific number (currently only "11" is provided, yielding `fn-fx-openjfx11`)
 
 Although these artifacts are code-identical, they have different upstream dependencies that are JRE-version-specific, so
-please make sure you select the correct artifact based on the version of the JRE that will be used **at runtime**.
+please make sure you select the correct artifact based on the version of the JRE that will be used **at both development
+and runtime**.
 
 The regrettably [tight coupling between OpenJFX and JRE versions](http://mail.openjdk.java.net/pipermail/openjfx-discuss/2018-October/000061.html)
-makes it more challenging for the project to maintain both forward and backward compatibility across JRE versions, but our
-intent is to maintain the broadest practical compatibility, at least until JRE 11+ is widely deployed.  Whether this continues
+makes it more challenging for the project to maintain both forward and backward compatibility across JRE editions and versions,
+but our intent is to maintain the broadest practical compatibility, at least until JRE 11+ is widely deployed.  Whether this continues
 to be done via multiple artifacts, or some other mechanism is an open question.  If you have suggestions / comments / preferences
 on this, please [let us know](https://github.com/fn-fx/fn-fx/issues/new?template=Support_question.md)!
 
@@ -73,8 +90,8 @@ on this, please [let us know](https://github.com/fn-fx/fn-fx/issues/new?template
 Kicking the tyres is a snap with the handy [`lein-try`](https://github.com/avescodes/lein-try) plugin:
 
 ```shell
-$ lein try fn-fx/fn-fx-openjfx11 "0.5.0-SNAPSHOT"   # If you're running JRE 11
-$ lein try fn-fx/fn-fx-javafx "0.5.0-SNAPSHOT"      # If you're running on JRE 1.7u6-10
+$ lein try fn-fx/fn-fx-openjfx11 "0.5.0-SNAPSHOT"   # If you're running JRE 11 (Oracle or OpenJDK)
+$ lein try fn-fx/fn-fx-javafx "0.5.0-SNAPSHOT"      # If you're running on an Oracle JRE, versions 1.7u6 to 10
 ```
 
 ### With a Placeholder Project
@@ -87,8 +104,8 @@ Or, if you'd rather not use `lein-try`, you could create a new folder and put a 
   :min-lein-version "2.8.1"
   :dependencies     [[org.clojure/clojure "1.9.0"]
                      ; Pick one, and only one, of the following dependencies:
-                     [fn-fx/fn-fx-openjfx11 "0.5.0-SNAPSHOT"]    ; If you're running JRE 11
-                     [fn-fx/fn-fx-javafx "0.5.0-SNAPSHOT"]       ; If you're running JRE 1.7u6-10
+                     [fn-fx/fn-fx-openjfx11 "0.5.0-SNAPSHOT"]    ; If you're running JRE 11 (Oracle or OpenJDK)
+                     [fn-fx/fn-fx-javafx "0.5.0-SNAPSHOT"]       ; If you're running on an Oracle JRE, versions 1.7u6 to 10
 ])
 ```
 
