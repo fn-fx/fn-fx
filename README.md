@@ -187,6 +187,7 @@ Once you have a REPL up within the cloned directory, the examples may be run as 
 * **[Shapes 3D](https://github.com/fn-fx/fn-fx/blob/master/examples/other_examples/shapes_3d.clj)**: `(require '[other-examples.shapes-3d :as shapes-3d]) (shapes-3d/-main)`
 * **[Todo](https://github.com/fn-fx/fn-fx/blob/master/examples/other_examples/todo.clj)**: `(require '[other-examples.todo :as todo]) (todo/-main)`
 * **[Menu Bar](https://github.com/fn-fx/fn-fx/blob/master/examples/other_examples/menubar.clj)**: `(require '[other-examples.menubar :as menu]) (menu/-main)`
+* **[WebView](https://github.com/fn-fx/fn-fx/blob/master/examples/other_examples/webview.clj)**: `(require '[other-examples.webview :as webview]) (webview/-main)`
 
 Each example will open a window that can be closed at any time (and reopened by calling `-main` again).
 
