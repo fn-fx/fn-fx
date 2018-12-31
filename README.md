@@ -51,12 +51,12 @@ and diffing if the properties of the component haven't changed since the last re
 Before using `fn-fx`, please make sure you're using a JRE version that has been [tested](https://travis-ci.com/fn-fx/fn-fx)
 and is known to work.  Here's the current test matrix:
 
-|                           |  JRE 1.8 (Oracle) | JRE 1.8 (OpenJDK) | JRE 11 (Oracle) | JRE 11 (OpenJDK) |
-|                      ---: |   :---:           |  :---:            |  :---:          |  :---:           |
-| Clojure 1.7.0             | ❌<sup>1</sup>    | ❌<sup>1,2</sup>  | ❌<sup>1</sup> | ❌<sup>1</sup>   |
-| Clojure 1.8.0             | ✅                | ❌<sup>2</sup>    | ✅             | ✅               |
-| Clojure 1.9.0             | ✅                | ❌<sup>2</sup>    | ✅             | ✅               |
-| Clojure 1.10.0 (snapshot) | ✅                | ❌<sup>2</sup>    | ✅             | ✅               |
+|                |  JRE 1.8 (Oracle) | JRE 1.8 (OpenJDK) | JRE 11 (Oracle) | JRE 11 (OpenJDK) |
+|           ---: |   :---:           |  :---:            |  :---:          |  :---:           |
+| Clojure 1.7.0  | ❌<sup>1</sup>    | ❌<sup>1,2</sup>  | ❌<sup>1</sup> | ❌<sup>1</sup>   |
+| Clojure 1.8.0  | ✅                | ❌<sup>2</sup>    | ✅             | ✅               |
+| Clojure 1.9.0  | ✅                | ❌<sup>2</sup>    | ✅             | ✅               |
+| Clojure 1.10.0 | ✅                | ❌<sup>2</sup>    | ✅             | ✅               |
 
 <sup>1</sup> For now we've decided to only test back as far as Clojure 1.8.0.  If anyone needs this tested on older versions of Clojure, PRs are welcome!
 
