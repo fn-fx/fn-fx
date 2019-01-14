@@ -40,12 +40,13 @@
 
 (defn needs-update? [from to]
   (let [{:keys [props]} to]
-    (if (and (= (:type from) (:type to))
-             (should-update? to (:props from) props))
-      (do (set-once! to :render-result nil)
-          true)
-      (do (set-once! to :render-result (:render-result from))
-          false))))
+    (if (not= (:type from) (:type to))
+      true
+      (if (should-update? to (:props from) props)
+        (do (set-once! to :render-result nil)
+            true)
+        (do (set-once! to :render-result (:render-result from))
+            false)))))
 
 
 (defn diff-child-list [dom parent-node k a-list b-list]
