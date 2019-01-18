@@ -9,6 +9,6 @@
 
 (set! *warn-on-reflection* true)
 
-(JFXPanel.)
+;(JFXPanel.)
 
 
