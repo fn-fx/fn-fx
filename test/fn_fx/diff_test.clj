@@ -249,7 +249,7 @@
           rendered? (atom false)
           first (always-updating :rendered? rendered?)]
       (is (= (->Created 1) (diff log nil first)))
-      (is @rendered?)
+      (is (= true @rendered?))
 
       (is (= @log {:id 1
 
@@ -258,8 +258,8 @@
 
       (reset! rendered? false)
 
-      (is (= (->Noop 1) (diff log first (always-updating :rendered? rendered?))))
-      (is rendered? true)
+      (is (= (->Updated 1) (diff log first (always-updating :rendered? rendered?))))
+      (is (= true @rendered?))
 
       (is (= @log {:id 1
                    :log [[:create 1 :button]

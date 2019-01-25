@@ -23,20 +23,23 @@
   :min-lein-version    "2.8.1"
   :repositories        [["sonatype-snapshots" {:url "https://oss.sonatype.org/content/groups/public" :snapshots true}]
                         ["jcenter"            {:url "https://jcenter.bintray.com/" :snapshots false}]]
-  :dependencies        [[org.clojure/clojure         "1.9.0"]
+  :dependencies        [[org.clojure/clojure         "1.10.0"]
                         [org.reflections/reflections "0.9.11"]]
   :profiles            {:dev            {:source-paths ["src" "examples"]
-                                         :dependencies [[com.github.javaparser/javaparser-core "3.7.0"]]
+                                         :dependencies [[com.github.javaparser/javaparser-core "3.9.0"]]
                                          :plugins      [[lein-release  "1.1.3"]
                                                         [lein-licenses "0.2.2"]
                                                         [lein-codox    "0.10.5"]]}
+                        :1.8            {:dependencies [[org.clojure/clojure "1.8.0"]]}
+                        :1.9            {:dependencies [[org.clojure/clojure "1.9.0"]]}
+                        :1.10           {:dependencies [[org.clojure/clojure "1.10.0"]]}
                         :openjfx11      ^:leaky   ; Ensure these dependencies "leak" through to the POM and JAR tasks
-                                        {:dependencies [[org.openjfx/javafx-controls "11"]
-                                                        [org.openjfx/javafx-swing    "11"]
-                                                        [org.openjfx/javafx-media    "11"]
-                                                        [org.openjfx/javafx-fxml     "11"]
-                                                        [org.openjfx/javafx-web      "11"]
-                                                        [org.openjfx/javafx-graphics "11"]]}
+                                        {:dependencies [[org.openjfx/javafx-controls "11.0.1"]
+                                                        [org.openjfx/javafx-swing    "11.0.1"]
+                                                        [org.openjfx/javafx-media    "11.0.1"]
+                                                        [org.openjfx/javafx-fxml     "11.0.1"]
+                                                        [org.openjfx/javafx-web      "11.0.1"]
+                                                        [org.openjfx/javafx-graphics "11.0.1"]]}
 ; Monocle seems pretty unreliable, especially on older JVMs, so we use Xvfb for CI instead.  I've left these details here for now in case we want to reintroduce Monocle at some point.
 ;                     :openjfx11-test    {:dependencies [[org.testfx/openjfx-monocle  "jdk-11+26" :exclusions [org.openjfx/javafx-base
 ;                                                                                                              org.openjfx/javafx-controls

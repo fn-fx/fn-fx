@@ -42,10 +42,10 @@
   (let [{:keys [props]} to]
     (if (and (= (:type from) (:type to))
              (should-update? to (:props from) props))
-      (do (set-once! to :render-result (:render-result from))
-          false)
       (do (set-once! to :render-result nil)
-          true))))
+          true)
+      (do (set-once! to :render-result (:render-result from))
+          false))))
 
 
 (defn diff-child-list [dom parent-node k a-list b-list]
@@ -152,7 +152,7 @@
                        ~@mp
                        ~@(when (not @has-should-update?)
                            `[(should-update? [this# old-props# new-props#]
-                                           (= old-props# new-props#))]))
+                                           (not= old-props# new-props#))]))
          (defn ~fn-name
            ([] (~fn-name {}))
            ([k# v# & props#]
