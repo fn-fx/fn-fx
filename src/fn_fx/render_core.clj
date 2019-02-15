@@ -1,19 +1,19 @@
 (ns fn-fx.render-core
-  (:require [fn-fx.diff :as diff]
+    (:require [fn-fx.diff :as diff]
             [fn-fx.util :as util]
             [fn-fx.util.reflect-utils :as ru]
             [fn-fx.fx-tree-search :as tree-search]
             [clojure.string :as str])
-  (:import (javafx.embed.swing JFXPanel)
-           (javax.swing JFrame)
-           (java.lang.reflect Constructor Method Parameter Modifier Field)
-           (javafx.scene.layout StackPane VBox)
-           (javafx.event EventHandler Event)
-           (java.io Writer)
-           (javafx.beans.value ObservableValue)
-           (java.util WeakHashMap)
-           (javafx.beans.value ChangeListener)
-           (javafx.stage Window)))
+    (:import (javafx.embed.swing JFXPanel)
+      (javax.swing JFrame)
+      (java.lang.reflect Constructor Method Parameter Modifier Field)
+      (javafx.scene.layout StackPane VBox)
+      (javafx.event EventHandler Event)
+      (java.io Writer)
+      (javafx.beans.value ObservableValue)
+      (java.util WeakHashMap)
+      (javafx.beans.value ChangeListener)
+      (javafx.stage Window) (javafx.beans.property Property)))
 
 (set! *warn-on-reflection* true)
 
@@ -24,6 +24,7 @@
 (declare get-getter)
 (declare get-static-setter)
 (declare get-add-listener)
+(declare get-bind-fn)
 
 (defmulti set-property (fn [control prop val]
                          [(type control) prop]))
@@ -92,9 +93,10 @@
 (defmethod set-property :default
   [this prop val]
   (let [set-fn (if (namespace prop)
-                 (if (= (namespace prop) "listen")
-                   (get-add-listener (type this) prop)
-                   (get-static-setter prop))
+                 (case (namespace prop)
+                       "listen" (get-add-listener (type this) prop)
+                       "bind" (get-bind-fn (type this) prop)
+                       (get-static-setter prop))
                  (get-setter (type this) prop))]
 
     (defmethod set-property [(type this) prop]
@@ -322,7 +324,7 @@
   "Takes a sequence of methods and an instance and invokes a composition of the methods
   (each method is invoked on the result of the previous method."
   (loop [method-names method-names
-         obj obj]
+         ^Object obj obj]
     (let [^Class klass (.getClass obj)
           ^Method method (.getMethod klass (first method-names) empty-class-array)
           result (.invoke method obj empty-object-array)
@@ -333,23 +335,31 @@
 
 
 
+
+(defn- get-property-fn [^Class class prop]
+
+       "Returns a function which when invoked with a node will return the property corresponding to prop."
+       (let [method-names  (str/split (name prop) #"\.")
+             last-index (dec (count method-names))
+             method-names  (map-indexed (fn [i method-name]
+                                            (let [^String mn (util/kabob->camel method-name)]
+                                                 (if (= last-index i)
+                                                   (str mn "Property")
+                                                   (str "get" (Character/toUpperCase (.charAt mn 0)) (.substring mn 1)))))
+                                        method-names)]
+            #(invoke-comp method-names %)))
+
+
+
 (defn get-add-listener [^Class class prop]
   (let [;prop-name   (str (util/kabob->camel (name prop)) "Property")
         ;empty-array (make-array Class 0)
         ;prop        (.getMethod class prop-name empty-array)
-        method-names  (str/split (name prop) #"\.")
-        last-index (dec (count method-names))
-        method-names  (map-indexed (fn [i method-name]
-                                     (let [^String mn (util/kabob->camel method-name)]
-                                       (if (= last-index i)
-                                         (str mn "Property")
-                                         (str "get" (Character/toUpperCase (.charAt mn 0)) (.substring mn 1)))))
-                                   method-names)
         ;methods       (get-methods class method-names)
-        ]
+        get-prop (get-property-fn class prop)]
 
     (fn [inst val]
-      (let [^ObservableValue ob (invoke-comp method-names inst)                    ;(.invoke ^Method prop inst empty-array)
+      (let [^ObservableValue ob (get-prop inst)                    ;(.invoke ^Method prop inst empty-array)
             listeners           (get-listeners listener-map inst)
             handler-fn          *handler-fn*
             listener            (reify ChangeListener
@@ -361,6 +371,32 @@
           (.removeListener ob ^ChangeListener old))
         (vswap! listeners assoc prop listener)
         (.addListener ob listener)))))
+
+
+
+
+
+(defn get-bind-fn [^Class clazz prop]
+
+      "Returns a function which when invoked binds a property to another property "
+
+      (let [;prop-name   (str (util/kabob->camel (name prop)) "Property")
+            ;empty-array (make-array Class 0)
+            ;prop        (.getMethod class prop-name empty-array)
+            ;methods       (get-methods class method-names)
+            get-prop (get-property-fn clazz prop)]
+
+           (fn [inst val]
+               (let [^Property src        (get-prop inst)
+                     [target-id target-prop] val
+                     target-inst (or
+                                   (tree-search/find-nearest-by-id inst (str target-id))
+                                   (throw (Exception. (str "node with id " target-id " not found"))))
+                     get-target-prop (get-property-fn (class target-inst) target-prop)
+                     ^ObservableValue target     (get-target-prop target-inst)]
+
+                    (.bind src target)))))
+
 
 
 

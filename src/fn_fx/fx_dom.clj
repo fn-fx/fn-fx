@@ -1,6 +1,6 @@
 (ns fn-fx.fx-dom
   (:require [fn-fx.render-core :as render-core]
-            [fn-fx.diff :refer [IDom diff component]]
+            [fn-fx.diff :refer [IDom render-diff component]]
             [fn-fx.util :refer [run-and-wait run-later]])
   (:import (java.util List)))
 
@@ -56,10 +56,10 @@
    (app init-state default-handler-fn))
   ([init-state default-handler-fn]
    (let [dom  (->FXDom default-handler-fn)
-         root (:node (diff dom nil init-state))]
+         root (:node (render-diff dom nil init-state))]
 
      (->App init-state dom root default-handler-fn))))
 
 (defn update-app [{:keys [prev-state dom root handler-fn]} new-state]
-  (let [new-node (:node (diff dom prev-state new-state))]
+  (let [new-node (:node (render-diff dom prev-state new-state))]
     (->App new-state dom new-node handler-fn)))

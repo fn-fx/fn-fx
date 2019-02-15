@@ -18,26 +18,20 @@
   (get-children [this]
     nil)
   (get-parent [this]
-    (.getParent this)))
-
-
-;; Covers JavaFX objects which are containers, but are not necessarily nodes (like Stage, Scene)
-(defprotocol IContainer
-  (get-root-node [this]))
-
-(extend-protocol IContainer
-  javafx.stage.Window
-  (get-root-node [this]
-    (let [scene (.getScene this)]
-      (and scene (.getRoot scene))))
+    (.getParent this))
 
   javafx.scene.Scene
-  (get-root-node [this]
-    (.getRoot this))
+  (get-children [this]
+    (get-children (.getRoot this)))
+  (get-parent [this]
+    (get-parent (.getRoot this)))
 
-  javafx.scene.Parent
-  (get-root-node [this]
-    this))
+  javafx.stage.Window
+  (get-children [this]
+    (get-children (.getRoot (.getScene this))))
+  (get-parent [this]
+    (get-parent (.getRoot (.getScene this)))))
+
 
 
 (defn find-child-by-id [^Node node id]
@@ -52,19 +46,20 @@
 
 
 (defn find-nearest-by-id
-  ([container id]
-   (let [node (and container (get-root-node container))]
-     (when node
-       (or (find-child-by-id node id)
-           (find-nearest-by-id node id node)))))
+  ([node id]
+    (when node
+          (or (find-child-by-id node id)
+              (find-nearest-by-id node id node))))
   ([^Node node id skip]
    (if-let [parent (get-parent node)]
-     (if-let [found (reduce
-                      (fn [_ node]
-                        (when-not (= node skip)
-                          (if-let [found (find-child-by-id node id)]
-                            (reduced found))))
-                      nil
-                      (get-children parent))]
+     (if-let [found (if (= (.getId parent) id)
+                      parent
+                      (reduce
+                        (fn [_ node]
+                            (when-not (= node skip)
+                                      (if-let [found (find-child-by-id node id)]
+                                              (reduced found))))
+                        nil
+                        (get-children parent)))]
        found
        (find-nearest-by-id parent id parent)))))
