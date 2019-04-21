@@ -4,9 +4,7 @@
             [fn-fx.util.reflect-utils :as ru]
             [fn-fx.fx-tree-search :as tree-search]
             [clojure.string :as str])
-  (:import (javafx.embed.swing JFXPanel)
-;           (javax.swing JFrame)
-           (java.lang.reflect Constructor Method Parameter Modifier Field)
+  (:import (java.lang.reflect Constructor Method Parameter Modifier Field)
            (javafx.scene.layout StackPane VBox)
            (javafx.event EventHandler Event)
            (java.io Writer)
@@ -17,7 +15,6 @@
 
 (set! *warn-on-reflection* true)
 
-;(JFXPanel.)
 
 (declare ctor-fn)
 (declare get-setter)
@@ -239,7 +236,7 @@
         (.invoke method inst arr)))))
 
 (defn get-static-setter [prop]
-  (let [^Class klass   (->> (ru/all-javafx-types)
+  (let [^Class klass   (->> ru/all-javafx-types
                             (filter
                               (fn [^Class klass]
                                 (str/ends-with? (.getName klass) (str "." (util/kabob->class (namespace prop))))))
@@ -372,8 +369,8 @@
         result
         (throw (ex-info "Invalid Enum Value" {:class klass :value kw :supported vals}))))))
 
-;(doseq [enum (ru/enum-classes)]
-;  (register-enum-converter enum))
+(doseq [enum ru/enum-classes]
+  (register-enum-converter enum))
 
 (defn register-value-converter [^Class klass]
   (doseq [c (conj (ancestors klass) klass)]

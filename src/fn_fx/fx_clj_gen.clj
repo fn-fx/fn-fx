@@ -1,8 +1,6 @@
 (ns fn-fx.fx-clj-gen
   (:require [clojure.string :as str])
-  (:import (javafx.embed.swing JFXPanel)
-;           (javax.swing JFrame)
-           (javafx.application Application)
+  (:import (javafx.application Application)
            (java.lang.reflect Constructor Parameter)
            (org.reflections.scanners SubTypesScanner Scanner)
            (org.reflections Reflections)

@@ -1,12 +1,29 @@
 (ns fn-fx.init
-  (:import  (javafx.embed.swing JFXPanel))
-  (:require [fn-fx.render-core :as rc]
-            [fn-fx.util.reflect-utils :as ru]))
+  (:import (javafx.application Platform)))
 
-(set! *warn-on-reflection* true)
 
-(def init! (memoize (fn []
-                      (import 'javax.swing.JFrame)
-                      (JFXPanel.)
-                      (doseq [enum (ru/enum-classes)]
-                        (rc/register-enum-converter enum)))))
+(def ^:private javafx-initialized (atom false))
+
+
+
+;; Initialize the Java FX platform
+(defn init-javafx! []
+  (swap! javafx-initialized
+         (fn [is-initialized]
+           (if-not is-initialized
+             (do
+               (println "*compile-files*:" *compile-files*)
+
+               (if *compile-files*
+
+                 ;; AOT compilation will trigger JavaFX initialization, which starts the JavaFX application thread
+                 ;; We need to make it a daemon thread, otherwise compilation will never finish
+                 (let [t (Thread. #(Platform/startup (fn [] nil)))]
+                   (.setDaemon t true)
+                   (.start t)
+                   (.join t))
+
+                 (Platform/startup (fn [] nil)))
+               true)
+             true))))
+

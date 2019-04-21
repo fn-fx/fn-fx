@@ -3,20 +3,21 @@
   (:require [clojure.string :as str]
             [fn-fx.util :as util]
             [clojure.edn :as edn]
-            [clojure.java.io :as io])
-  (:import (javafx.embed.swing JFXPanel)
-           (java.io FileInputStream File InputStream)
+            [clojure.java.io :as io]
+            [fn-fx.init :refer [init-javafx!]])
+  (:import (java.io FileInputStream File InputStream)
            (java.lang.reflect Method Executable)
-;           (javafx.embed.swing JFXPanel)   ; ####TODO: DUPLICATE!
            (org.reflections Reflections)
            (java.lang.reflect Constructor Parameter Modifier ParameterizedType)
            (org.reflections.scanners SubTypesScanner Scanner)
            (javafx.beans.binding ObjectExpression BooleanExpression LongExpression DoubleExpression)
            (javafx.event EventHandler Event)))
 
-;(JFXPanel.)
 
 (set! *warn-on-reflection* true)
+
+
+(init-javafx!)
 
 
 (def method-args (delay (edn/read-string (slurp (io/resource "method-arg-info.edn")))))
@@ -33,22 +34,20 @@
 ;; All the JavaFX types we may want to use. These will not be
 ;; inner classes, interface, builders, properties, or base classes
 (def all-javafx-types
-  (memoize (fn []
-             (->> (map #(Class/forName %) (.getAllTypes (Reflections. "javafx" (into-array Scanner [(SubTypesScanner. false)]))))
-                  (concat (.getSubTypesOf (Reflections. "javafx" (into-array Scanner [(SubTypesScanner. false)])) Enum))
-                  (remove #(.isInterface ^Class %))
-                  (remove #(str/includes? (.getName ^Class %) "$"))
-                  (remove #(str/ends-with? (.getName ^Class %) "Builder"))
-                  (remove #(str/ends-with? (.getName ^Class %) "Property"))
-                  (remove #(str/ends-with? (.getName ^Class %) "Base"))
-                  (remove #(Modifier/isAbstract (.getModifiers ^Class %)))
-                  (filter #(Modifier/isPublic (.getModifiers ^Class %)))
-                  set))))
+  (->> (map #(Class/forName %) (.getAllTypes (Reflections. "javafx" (into-array Scanner [(SubTypesScanner. false)]))))
+       (concat (.getSubTypesOf (Reflections. "javafx" (into-array Scanner [(SubTypesScanner. false)])) Enum))
+       (remove #(.isInterface ^Class %))
+       (remove #(str/includes? (.getName ^Class %) "$"))
+       (remove #(str/ends-with? (.getName ^Class %) "Builder"))
+       (remove #(str/ends-with? (.getName ^Class %) "Property"))
+       (remove #(str/ends-with? (.getName ^Class %) "Base"))
+       (remove #(Modifier/isAbstract (.getModifiers ^Class %)))
+       (filter #(Modifier/isPublic (.getModifiers ^Class %)))
+       set))
 
 
 (def enum-classes
-  (memoize (fn []
-             (filter #(.isEnum ^Class %) (all-javafx-types)))))
+  (filter #(.isEnum ^Class %) all-javafx-types))
 
 (defn class-properties
   "For a given class, return all the JavaFX observable properties"
@@ -91,7 +90,7 @@
 ;; All the JavaFX components (classes with properties)
 (def control-types
   (delay
-    (->> (all-javafx-types)
+    (->> all-javafx-types
          (filter
            (fn [t]
              (pos? (count (class-properties t)))))
@@ -108,7 +107,7 @@
 ;; All the JavaFX value types (classes with no properties)
 (def value-types
   (delay
-    (->> (all-javafx-types)
+    (->> all-javafx-types
          (remove
            (fn [^Class t]
              (.isEnum t)))
