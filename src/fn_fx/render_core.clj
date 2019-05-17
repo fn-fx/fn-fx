@@ -11,7 +11,8 @@
            (javafx.beans.value ObservableValue)
            (java.util WeakHashMap)
            (javafx.beans.value ChangeListener)
-           (javafx.stage Window)))
+           (javafx.stage Window)
+           (javafx.beans.property Property)))
 
 (set! *warn-on-reflection* true)
 
