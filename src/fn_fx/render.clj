@@ -1,6 +1,4 @@
 (ns fn-fx.render
-  (:import (javafx.embed.swing JFXPanel)
-           (java.lang.reflect Method Constructor Parameter))
   (:require [fn-fx.util :as util]
             [fn-fx.diff :as diff]
             [clojure.string :as str]
@@ -9,6 +7,5 @@
 
 (set! *warn-on-reflection* true)
 
-(JFXPanel.)
 
 

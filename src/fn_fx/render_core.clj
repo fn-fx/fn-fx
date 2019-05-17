@@ -4,9 +4,7 @@
             [fn-fx.util.reflect-utils :as ru]
             [fn-fx.fx-tree-search :as tree-search]
             [clojure.string :as str])
-  (:import (javafx.embed.swing JFXPanel)
-           (javax.swing JFrame)
-           (java.lang.reflect Constructor Method Parameter Modifier Field)
+  (:import (java.lang.reflect Constructor Method Parameter Modifier Field)
            (javafx.scene.layout StackPane VBox)
            (javafx.event EventHandler Event)
            (java.io Writer)
@@ -17,7 +15,6 @@
 
 (set! *warn-on-reflection* true)
 
-(JFXPanel.)
 
 (declare ctor-fn)
 (declare get-setter)
