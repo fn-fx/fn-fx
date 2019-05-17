@@ -3,20 +3,21 @@
   (:require [clojure.string :as str]
             [fn-fx.util :as util]
             [clojure.edn :as edn]
-            [clojure.java.io :as io])
-  (:import (javafx.embed.swing JFXPanel)
-           (java.io FileInputStream File InputStream)
+            [clojure.java.io :as io]
+            [fn-fx.init :refer [init-javafx!]])
+  (:import (java.io FileInputStream File InputStream)
            (java.lang.reflect Method Executable)
-           (javafx.embed.swing JFXPanel)
            (org.reflections Reflections)
            (java.lang.reflect Constructor Parameter Modifier ParameterizedType)
            (org.reflections.scanners SubTypesScanner Scanner)
            (javafx.beans.binding ObjectExpression BooleanExpression LongExpression DoubleExpression)
            (javafx.event EventHandler Event)))
 
-(JFXPanel.)
 
 (set! *warn-on-reflection* true)
+
+
+(init-javafx!)
 
 
 (def method-args (delay (edn/read-string (slurp (io/resource "method-arg-info.edn")))))

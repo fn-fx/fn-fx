@@ -1,7 +1,8 @@
 (ns fn-fx.fx-dom
   (:require [fn-fx.render-core :as render-core]
             [fn-fx.diff :refer [IDom render-diff component]]
-            [fn-fx.util :refer [run-and-wait run-later]])
+            [fn-fx.util :refer [run-and-wait run-later]]
+            [fn-fx.init :refer [init-javafx!]])
   (:import (java.util List)))
 
 (defn unwrap-promise [v]
@@ -52,9 +53,12 @@
   (println "Unhandled event " data))
 
 (defn app
+
   ([init-state]
    (app init-state default-handler-fn))
+
   ([init-state default-handler-fn]
+   (init-javafx!)
    (let [dom  (->FXDom default-handler-fn)
          root (:node (render-diff dom nil init-state))]
 

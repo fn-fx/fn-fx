@@ -2,19 +2,16 @@
   (:gen-class)
   (:require [clojure.string :as str]
             [fn-fx.util.reflect-utils :as ru])
-  (:import (javafx.embed.swing JFXPanel)
-           (java.io FileInputStream File)
+  (:import (java.io FileInputStream File)
            (com.github.javaparser JavaParser)
            (com.github.javaparser.ast.body MethodDeclaration ConstructorDeclaration)
-           (com.github.javaparser.ast.type PrimitiveType ReferenceType)
-           (javafx.embed.swing JFXPanel)))
+           (com.github.javaparser.ast.type PrimitiveType ReferenceType)))
 
 ;; This file generates the resources method-arg-fino.edn file needed
 ;; during the generation of controls.clj, It basically logs the argument
 ;; names of values
 
 
-(JFXPanel.)
 
 
 (defprotocol IGetType

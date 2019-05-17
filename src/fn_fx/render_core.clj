@@ -1,23 +1,20 @@
 (ns fn-fx.render-core
-    (:require [fn-fx.diff :as diff]
+  (:require [fn-fx.diff :as diff]
             [fn-fx.util :as util]
             [fn-fx.util.reflect-utils :as ru]
             [fn-fx.fx-tree-search :as tree-search]
             [clojure.string :as str])
-    (:import (javafx.embed.swing JFXPanel)
-      (javax.swing JFrame)
-      (java.lang.reflect Constructor Method Parameter Modifier Field)
-      (javafx.scene.layout StackPane VBox)
-      (javafx.event EventHandler Event)
-      (java.io Writer)
-      (javafx.beans.value ObservableValue)
-      (java.util WeakHashMap)
-      (javafx.beans.value ChangeListener)
-      (javafx.stage Window) (javafx.beans.property Property)))
+  (:import (java.lang.reflect Constructor Method Parameter Modifier Field)
+           (javafx.scene.layout StackPane VBox)
+           (javafx.event EventHandler Event)
+           (java.io Writer)
+           (javafx.beans.value ObservableValue)
+           (java.util WeakHashMap)
+           (javafx.beans.value ChangeListener)
+           (javafx.stage Window)))
 
 (set! *warn-on-reflection* true)
 
-(JFXPanel.)
 
 (declare ctor-fn)
 (declare get-setter)
