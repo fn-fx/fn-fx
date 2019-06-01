@@ -47,6 +47,11 @@
       (do (set-once! to :render-result (:render-result from))
           false))))
 
+;; this is a quite hacky implementation of the binding mechanism
+;; the problem is that the binding may refer to controls which do not exist yet
+;; so we do all bindings at the end of the diff rendering
+;; this atom is used to accumulate the binding actions in one rendering cycle
+;; a better implementation is for sure possible
 (def bind-actions (atom nil))
 
 (defn- bind-property! [this node property value]
