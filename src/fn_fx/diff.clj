@@ -47,8 +47,18 @@
       (do (set-once! to :render-result (:render-result from))
           false))))
 
+;; this is a quite hacky implementation of the binding mechanism
+;; the problem is that the binding may refer to controls which do not exist yet
+;; so we do all bindings at the end of the diff rendering
+;; this atom is used to accumulate the binding actions in one rendering cycle
+;; a better implementation is for sure possible
+(def bind-actions (atom nil))
 
-(defn diff-child-list [dom parent-node k a-list b-list]
+(defn- bind-property! [this node property value]
+       (swap! bind-actions conj #(set-property! this node property value)))
+
+
+(defn- diff-child-list [dom parent-node k a-list b-list]
   (dotimes [idx (max (count a-list) (count b-list))]
     (let [a (nth a-list idx nil)
           b (nth b-list idx nil)]
@@ -60,28 +70,33 @@
           Updated (replace-indexed-child! dom parent-node k idx node)
           Noop nil)))))
 
-(defn diff-component [dom dom-node spec-a spec-b]
+(defn- diff-component [dom dom-node spec-a spec-b]
   (reduce-kv
     (fn [_ k va]
       (let [vb (get spec-b k)]
-        (if (sequential? vb)
+           ;;TODO find a better way to detect when a property is supposed to contain children
+        (if (and (sequential? vb) (not= (namespace k) "bind"))
           (diff-child-list dom dom-node k va vb)
           (let [result (diff dom va vb)]
             (if (or (instance? Created result)
                     (instance? Updated result))
-              (set-property! dom dom-node k (:node result)))))))
+              (if (= (namespace k) "bind")
+                (bind-property! dom dom-node k (:node result))
+                (set-property! dom dom-node k (:node result))))))))
     nil
     spec-a)
 
   (reduce-kv
     (fn [_ k vb]
       (when-not (get spec-a k)
-        (if (sequential? vb)
+        (if (and (sequential? vb) (not= (namespace k) "bind"))
           (diff-child-list dom dom-node k nil vb)
           (let [result (diff dom nil vb)]
             (if (or (instance? Created result)
                     (instance? Updated result))
-              (set-property! dom dom-node k (:node result)))))))
+              (if (= (namespace k) "bind")
+                (bind-property! dom dom-node k (:node result))
+                (set-property! dom dom-node k (:node result))))))))
     nil
     spec-b))
 
@@ -126,6 +141,15 @@
       [:comp :nil] (->Deleted (:dom-node a))
 
       [:val :nil] (->Deleted a))))
+
+
+
+(defn render-diff [dom a b]
+      (let [result (diff dom a b)]
+           (swap! bind-actions #(doseq [action %]
+                                       (action)))
+           result))
+
 
 
 (defn component
