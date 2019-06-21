@@ -100,7 +100,7 @@
     nil
     spec-b))
 
-(defn- diff
+(defn diff
   [dom a b]
   (let [refresh-node (fn [node compo-a compo-b]
                        (set-once! compo-b :dom-node node)
