@@ -29,7 +29,10 @@
                                          :dependencies [[com.github.javaparser/javaparser-core "3.10.0"]]
                                          :plugins      [[lein-release  "1.1.3"]
                                                         [lein-licenses "0.2.2"]
-                                                        [lein-codox    "0.10.5"]]}
+                                                        [lein-codox    "0.10.5"]
+                                                        [cider/cider-nrepl "0.22.0-beta8"]
+                                                        [refactor-nrepl "2.5.0-SNAPSHOT"]
+                                                        [com.billpiel/sayid "0.0.17"]]}
                         :1.8            {:dependencies [[org.clojure/clojure "1.8.0"]]}
                         :1.9            {:dependencies [[org.clojure/clojure "1.9.0"]]}
                         :1.10           {:dependencies [[org.clojure/clojure "1.10.0"]]}
