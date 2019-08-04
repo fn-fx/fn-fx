@@ -417,6 +417,10 @@
   [v _]
   (int v))
 
+(defmethod convert-value [Long Integer/TYPE]
+  [v _]
+  (int v))
+
 (defmethod convert-value [Double Double/TYPE]
   [v _]
   (double v))
