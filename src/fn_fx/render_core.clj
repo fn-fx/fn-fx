@@ -169,7 +169,7 @@
 
 (defn get-value-ctors [^Class klass]
   (let [ctors (for [{:keys [is-ctor? ^Executable method prop-names-kw prop-types]} (ru/get-value-ctors klass)]
-                [prop-names-kw
+                [[prop-names-kw prop-types]
                  (if is-ctor?
                    (fn [args]
                      (let [^objects casted (into-array Object (map convert-value
@@ -192,20 +192,41 @@
 
 (alter-var-root #'get-value-ctors memoize)
 
+(defmulti score
+  "Score pairing or arguments to argument types according to preference
+  This will be used to choose best constructor."
+  (fn [from to-type]
+    [(type from) (cond
+                   (#{java.lang.Long/TYPE java.lang.Long java.lang.Integer/TYPE
+                      java.lang.Integer} to-type)
+                   :int-type
+                   (#{java.lang.Double/TYPE java.lang.Double java.lang.Float/TYPE
+                      java.lang.Float} to-type)
+                   :float-type)]))
 
-(defn value-type-impl [type args]
-  (let [ctors    (get-value-ctors type)
+(defmethod score [java.lang.Long :int-type] [_ _] 2)
+(defmethod score [java.lang.Long :float-type] [_ _] 1)
+(defmethod score [java.lang.Long nil] [_ _] 0)
+(defmethod score [java.lang.Double :int-type] [_ _] 1)
+(defmethod score [java.lang.Double :float-type] [_ _] 2)
+(defmethod score [java.lang.Double nil] [_ _] 0)
+(defmethod score :default [_ _] 0)
+
+(defn value-type-impl
+  "Return the builder funcion for type t ind args."
+  [t args]
+  (let [ctors    (get-value-ctors t)
         args-set (set (keys args))
         selected (->> ctors
                       (keep
-                        (fn [[k fn]]
-                          (when (= (set k) args-set)
-                            `(->Value ~type ~(mapv args k) ((get-value-ctors ~type) ~k)))))
-                      first)]
+                       (fn [[[pn pt :as k] fn]] ; prop-names-kw prop-types
+                         (let [arg-vals (mapv args pn)]
+                           (when (= (set pn) args-set)
+                             [(apply + (map score arg-vals pt))
+                              `(->Value ~t ~arg-vals ((get-value-ctors ~t) ~k))])))))]
+
     (assert selected (str "No constructor found for " (set (keys args))))
-    selected))
-
-
+    (-> selected sort last last)))
 
 (defn ctor-fn [^Class k]
   (let [^Constructor ctor (->> (.getDeclaredConstructors k)
