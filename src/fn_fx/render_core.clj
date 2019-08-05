@@ -192,29 +192,41 @@
 
 (alter-var-root #'get-value-ctors memoize)
 
+(defmulti score
+  "Score pairing or arguments to argument types according to preference
+  This will be used to choose best constructor."
+  (fn [from to-type]
+    [(type from) (cond
+                   (#{java.lang.Long/TYPE java.lang.Long java.lang.Integer/TYPE
+                      java.lang.Integer} to-type)
+                   :int-type
+                   (#{java.lang.Double/TYPE java.lang.Double java.lang.Float/TYPE
+                      java.lang.Float} to-type)
+                   :float-type)]))
+
+(defmethod score [java.lang.Long :int-type] [_ _] 2)
+(defmethod score [java.lang.Long :float-type] [_ _] 1)
+(defmethod score [java.lang.Long nil] [_ _] 0)
+(defmethod score [java.lang.Double :int-type] [_ _] 1)
+(defmethod score [java.lang.Double :float-type] [_ _] 2)
+(defmethod score [java.lang.Double nil] [_ _] 0)
+(defmethod score :default [_ _] 0)
 
 (defn value-type-impl
-  "t is type of value, args is map of properties"
+  "Return the builder funcion for type t ind args."
   [t args]
-  ;; to-do: We want to match constuctor using both (keys args)
-  ;; and the type of the arg values but we have to try to convert the values
-  ;; first since that is what the constructor will do. Let's not get too fancy,
-  ;; just match on the first constuctor that can have it's values converted
   (let [ctors    (get-value-ctors t)
         args-set (set (keys args))
         selected (->> ctors
                       (keep
-                        (fn [[k fn]]
-                          (when (= (set k) args-set)
-                            `(->Value ~t ~(mapv args k) ((get-value-ctors ~t) ~k))))))]
+                       (fn [[[pn pt :as k] fn]] ; prop-names-kw prop-types
+                         (let [arg-vals (mapv args pn)]
+                           (when (= (set pn) args-set)
+                             [(apply + (map score arg-vals pt))
+                              `(->Value ~t ~arg-vals ((get-value-ctors ~t) ~k))])))))]
 
-    ;; instead of above, selected should return several constructors matching the args-set
-    ;; find the first map entry that has convert-value of arg-values matching prop-types.
     (assert selected (str "No constructor found for " (set (keys args))))
-    ;; filter seleted to give first good constructor
-    selected))
-
-
+    (-> selected sort last last)))
 
 (defn ctor-fn [^Class k]
   (let [^Constructor ctor (->> (.getDeclaredConstructors k)
