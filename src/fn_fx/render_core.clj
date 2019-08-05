@@ -169,7 +169,7 @@
 
 (defn get-value-ctors [^Class klass]
   (let [ctors (for [{:keys [is-ctor? ^Executable method prop-names-kw prop-types]} (ru/get-value-ctors klass)]
-                [(hash-map (interleave prop-names-kw prop-types))
+                [[prop-names-kw prop-types]
                  (if is-ctor?
                    (fn [args]
                      (let [^objects casted (into-array Object (map convert-value
