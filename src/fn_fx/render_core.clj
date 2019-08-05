@@ -169,7 +169,7 @@
 
 (defn get-value-ctors [^Class klass]
   (let [ctors (for [{:keys [is-ctor? ^Executable method prop-names-kw prop-types]} (ru/get-value-ctors klass)]
-                [prop-names-kw
+                [(hash-map (interleave prop-names-kw prop-types))
                  (if is-ctor?
                    (fn [args]
                      (let [^objects casted (into-array Object (map convert-value
@@ -193,16 +193,25 @@
 (alter-var-root #'get-value-ctors memoize)
 
 
-(defn value-type-impl [type args]
-  (let [ctors    (get-value-ctors type)
+(defn value-type-impl
+  "t is type of value, args is map of properties"
+  [t args]
+  ;; to-do: We want to match constuctor using both (keys args)
+  ;; and the type of the arg values but we have to try to convert the values
+  ;; first since that is what the constructor will do. Let's not get too fancy,
+  ;; just match on the first constuctor that can have it's values converted
+  (let [ctors    (get-value-ctors t)
         args-set (set (keys args))
         selected (->> ctors
                       (keep
                         (fn [[k fn]]
                           (when (= (set k) args-set)
-                            `(->Value ~type ~(mapv args k) ((get-value-ctors ~type) ~k)))))
-                      first)]
+                            `(->Value ~t ~(mapv args k) ((get-value-ctors ~t) ~k))))))]
+
+    ;; instead of above, selected should return several constructors matching the args-set
+    ;; find the first map entry that has convert-value of arg-values matching prop-types.
     (assert selected (str "No constructor found for " (set (keys args))))
+    ;; filter seleted to give first good constructor
     selected))
 
 
