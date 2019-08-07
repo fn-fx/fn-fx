@@ -104,20 +104,26 @@
   ((get-getter (type this) kw) this))
 
 
-(defn register-keyword-conv [^Class tp]
-  (let [values (->> (for [^Field f (.getDeclaredFields tp)
+(defn register-keyword-conv [^Class tp ^Class within]
+  (let [values1 (->> (for [^Field f (.getDeclaredFields tp)
                           :when (Modifier/isPublic (.getModifiers f))
                           :when (Modifier/isStatic (.getModifiers f))
                           :when (= tp (.getType f))]
                       [(keyword (util/upper->kabob (.getName f))) (.get f nil)])
-                    (into {}))]
+                         (into {}))
+        values2 (->> (for [^Class c (ancestors within)
+                           ^Field f (.getDeclaredFields c)
+                           :when (Modifier/isPublic (.getModifiers f))
+                           :when (Modifier/isStatic (.getModifiers f))]
+                       [(keyword (util/upper->kabob (.getName f))) (.get f nil)])
+                     (into values1))]
     (defmethod convert-value [clojure.lang.Keyword tp]
       [val _]
-      (let [r (get values val ::not-found)]
+      (let [r (get values2 val ::not-found)]
         (assert (not= r ::not-found)
                 (str "No converter for keyword " val " to type " tp))
         r))
-    values))
+    values2))
 
 (defmethod convert-value :default
   [value ^Class tp]
