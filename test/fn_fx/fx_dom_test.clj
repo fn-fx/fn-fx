@@ -36,13 +36,6 @@
     (is (= 22 (get-prop @long-count :cycle-count)))
     (is (= -1 (get-prop @integer-count :cycle-count)))))
 
-(deftest test-keyword-type-conversions
-  (let [interpolator (-> :javafx.animation.TranslateTransition
-                         (component {:interpolator :linear}) dom/app :root)]
-    (Thread/sleep 100)
-    (is (= javafx.animation.Interpolator/LINEAR
-           (get-prop @interpolator :interpolator)))))
-
 (defn gen-list [cnt]
   (let [items (vec (for [x (range cnt)]
                      (ui/button
