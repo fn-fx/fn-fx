@@ -125,8 +125,8 @@
     (if (keyword? value)
       (do (register-keyword-conv tp)
           (convert-value value tp))
-      (assert (.isAssignableFrom tp (type value)) (str "Can't convert " (pr-str value) " of type " (type value) " to " tp))))
-  value)
+      (assert (.isAssignableFrom tp (type value)) (str "Can't convert " (pr-str value) " of type " (type value) " to " tp)))
+    value))
 
 (defmethod convert-value
   [java.lang.Long Double/TYPE]
@@ -414,6 +414,14 @@
           nil)))))
 
 (defmethod convert-value [Long Integer]
+  [v _]
+  (int v))
+
+(defmethod convert-value [Long Integer/TYPE]
+  [v _]
+  (int v))
+
+(defmethod convert-value [Integer Integer/TYPE]
   [v _]
   (int v))
 

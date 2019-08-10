@@ -22,7 +22,26 @@
     (Thread/sleep 100)
     (is (= (get-prop @root :title) "Hello"))))
 
+(deftest test-primitive-type-conversions
+  (let [default-count (-> :javafx.animation.TranslateTransition
+                          (component {}) dom/app :root)
+        long-count (-> :javafx.animation.TranslateTransition
+                       (component {:cycle-count 22}) dom/app :root)
+        integer-count
+        (-> :javafx.animation.TranslateTransition
+            (component {:cycle-count javafx.animation.Animation/INDEFINITE})
+            dom/app :root)]
+    (Thread/sleep 100)
+    (is (= 1 (get-prop @default-count :cycle-count)))
+    (is (= 22 (get-prop @long-count :cycle-count)))
+    (is (= -1 (get-prop @integer-count :cycle-count)))))
 
+(deftest test-keyword-type-conversions
+  (let [interpolator (-> :javafx.animation.TranslateTransition
+                         (component {:interpolator :linear}) dom/app :root)]
+    (Thread/sleep 100)
+    (is (= javafx.animation.Interpolator/LINEAR
+           (get-prop @interpolator :interpolator)))))
 
 (defn gen-list [cnt]
   (let [items (vec (for [x (range cnt)]
